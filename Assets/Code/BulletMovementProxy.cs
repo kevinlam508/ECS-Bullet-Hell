@@ -9,17 +9,10 @@ using Unity.Mathematics;
 
 // stores read only info on how to move a bullet for performance
 [Serializable]
-public struct BulletMovement : IComponentData
-{
+public struct BulletMovement : IComponentData{
     public BulletMovementSystem.MoveType moveType;
     public float moveSpeed;
     public float rotateSpeed;
-
-    // inital state of bullet
-    public BulletMovementSystem.InitState init;
-    public float3 initPos;
-    public float3 initalPos;
-    public quaternion initRot;
 
 }
 
@@ -27,8 +20,7 @@ public struct BulletMovement : IComponentData
 //  will be converted into style component
 [UnityEngine.DisallowMultipleComponent]
 [RequiresEntityConversion]
-public class BulletMovementProxy : MonoBehaviour, IConvertGameObjectToEntity
-{
+public class BulletMovementProxy : MonoBehaviour, IConvertGameObjectToEntity{
 	[SerializeField]
     private BulletMovementSystem.MoveType moveType = BulletMovementSystem.MoveType.LINEAR;
 
@@ -41,13 +33,11 @@ public class BulletMovementProxy : MonoBehaviour, IConvertGameObjectToEntity
     
     // copies monobehavior data into component data
     public void Convert(Entity entity, EntityManager dstManager, 
-        GameObjectConversionSystem conversionSystem)
-    {
+        GameObjectConversionSystem conversionSystem){
         BulletMovement data = new BulletMovement { 
         	moveType = moveType,
 			moveSpeed = moveSpeed,
-			rotateSpeed = rotateSpeed,
-			init = BulletMovementSystem.InitState.NOT_INIT
+			rotateSpeed = rotateSpeed
         };
         dstManager.AddComponentData(entity, data);
     }

@@ -6,8 +6,7 @@ using Unity.Mathematics;
 using Unity.Burst;
 using Unity.Collections;
 
-public class PlayerMovementSystem : JobComponentSystem
-{
+public class PlayerMovementSystem : JobComponentSystem{
 	struct PlayerMovementJob : IJobForEach<Translation, Player>{
 
 		public float dx, dy, dt, speed;
@@ -19,8 +18,7 @@ public class PlayerMovementSystem : JobComponentSystem
 	}
 
 	// called on main thread, so can call Unity's static classes like Input
-	protected override JobHandle OnUpdate(JobHandle handle)
-    {
+	protected override JobHandle OnUpdate(JobHandle handle){
         PlayerMovementJob job = new PlayerMovementJob{
             dx = Input.GetAxis("Horizontal"),
             dy = Input.GetAxis("Vertical"),

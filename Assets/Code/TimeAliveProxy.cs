@@ -7,7 +7,6 @@ using Unity.Entities;
 [Serializable]
 public struct TimeAlive : IComponentData
 {
-    [HideInInspector]
     public float time;
 }
 

@@ -59,15 +59,15 @@ public class BulletHitSystem : JobComponentSystem
     }
 
 	protected override JobHandle OnUpdate(JobHandle handle){
-		JobHandle hitJob = new BulletHitJob{
+		JobHandle hitJobHandle = new BulletHitJob{
 			commandBuffer = commandBufferSystem.CreateCommandBuffer(),
 			world = createPhysicsWorldSystem.PhysicsWorld.CollisionWorld
 		}.ScheduleSingle(this, handle);
 
 		// tell bufferSystem to wait for hitJob, then it'll perform
 		// buffered commands
-        commandBufferSystem.AddJobHandleForProducer(hitJob);
+        commandBufferSystem.AddJobHandleForProducer(hitJobHandle);
 
-		return hitJob;
+		return hitJobHandle;
 	}
 }

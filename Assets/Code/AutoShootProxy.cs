@@ -4,12 +4,18 @@ using System.Collections.Generic;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
+using Unity.Collections;
+using UnityEngine.Assertions;
 
 [Serializable]
 public struct AutoShoot : IComponentData{
+
+    // timing data
 	public float startDelay;
 	public int started;
 	public float period;
+
+    // volley data
 	public AutoShootSystem.ShotPattern pattern;
 	public Entity bullet;
     public int count;
@@ -43,14 +49,15 @@ public class AutoShootProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvert
     public float centerAngle;
 
     // Referenced prefabs have to be declared so that the conversion system knows about them ahead of time
-    public void DeclareReferencedPrefabs(List<GameObject> gameObjects)
-    {
+    public void DeclareReferencedPrefabs(List<GameObject> gameObjects){
         gameObjects.Add(bullet);
     }
 
     // Lets you convert the editor data representation to the entity optimal runtime representation
-    public void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
-    {
+    public void Convert(Entity entity, EntityManager dstManager, 
+            GameObjectConversionSystem conversionSystem){
+        Assert.IsTrue(period > 0);
+
         AutoShoot shootData = new AutoShoot
         {
             // The referenced prefab will be converted due to DeclareReferencedPrefabs.
