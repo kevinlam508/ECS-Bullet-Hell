@@ -36,7 +36,9 @@ public class AutoShootProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvert
 
     [Header("Volley")]
 	public AutoShootSystem.ShotPattern pattern;
-    public GameObject bullet;
+
+    [Tooltip("Stats on the bullet's movement")]
+    public BulletMovementData movementStats;
 
     [Tooltip("Number of bullets in this volley")]
     public int count;
@@ -48,8 +50,12 @@ public class AutoShootProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvert
     [Range(0, 360)]
     public float centerAngle;
 
+    private GameObject bullet;
+
     // Referenced prefabs have to be declared so that the conversion system knows about them ahead of time
+    // called before convert??? so bullet will be assigned properly
     public void DeclareReferencedPrefabs(List<GameObject> gameObjects){
+        bullet = (GameObject)Resources.Load("Bullet");
         gameObjects.Add(bullet);
     }
 
@@ -57,6 +63,9 @@ public class AutoShootProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvert
     public void Convert(Entity entity, EntityManager dstManager, 
             GameObjectConversionSystem conversionSystem){
         Assert.IsTrue(period > 0);
+
+        // set bullet's movement stats
+        bullet.GetComponent<BulletMovementProxy>().stats = movementStats;
 
         AutoShoot shootData = new AutoShoot
         {

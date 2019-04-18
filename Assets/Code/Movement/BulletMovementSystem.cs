@@ -10,7 +10,6 @@ using CustomConstants;
 
 public class BulletMovementSystem : JobComponentSystem{
 	public enum MoveType : int { LINEAR, CURVE, HOMING, ENUM_END }
-	public enum InitState : int { NOT_INIT, INIT }
 
 	float accumeT = 0;
 

@@ -17,17 +17,17 @@ public class BulletHitSystem : JobComponentSystem
 {
 
 	[BurstCompile]
-	struct BulletHitJob : IJobForEachWithEntity<BulletHit, PhysicsCollider, Translation, Rotation>{
+	struct BulletHitJob : IJobForEachWithEntity<PhysicsCollider, Translation, Rotation>{
 
 		// stores deletions of entities after thread finishes
-        public EntityCommandBuffer commandBuffer;
+		// Concurrent version allows this job to run on multiple threads
+        public EntityCommandBuffer.Concurrent commandBuffer;
 
         // physics world to ask about collisions
         [ReadOnly] public CollisionWorld world;
 
-		public unsafe void Execute(Entity ent, int index, [ReadOnly] ref BulletHit bulletHit,
-				ref PhysicsCollider collider, [ReadOnly] ref Translation pos,
-				[ReadOnly] ref Rotation rot){
+		public unsafe void Execute(Entity ent, int index, [ReadOnly] ref PhysicsCollider collider, 
+				[ReadOnly] ref Translation pos, [ReadOnly] ref Rotation rot){
 
 			// params for the collision
 			ColliderDistanceInput input = new ColliderDistanceInput
@@ -40,7 +40,7 @@ public class BulletHitSystem : JobComponentSystem
 
             // poll for nearest collision
             if(world.CalculateDistance(input, out hit)){
-            	commandBuffer.DestroyEntity(ent);
+            	commandBuffer.DestroyEntity(index, ent);
             }
 
 		}
@@ -52,17 +52,27 @@ public class BulletHitSystem : JobComponentSystem
 	// phys world that will be polled in job
     BuildPhysicsWorld createPhysicsWorldSystem;
 
+    EntityQuery bullets;
+
 	protected override void OnCreateManager()
     {
         commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
         createPhysicsWorldSystem = World.GetOrCreateSystem<BuildPhysicsWorld>();
+
+        bullets = GetEntityQuery(new EntityQueryDesc{
+                All = new ComponentType[]{
+                	ComponentType.ReadOnly<BulletHit>(), 
+                    ComponentType.ReadOnly<PhysicsCollider>(),
+                    ComponentType.ReadOnly<Rotation>(),
+                    ComponentType.ReadOnly<Translation>()}
+            });
     }
 
 	protected override JobHandle OnUpdate(JobHandle handle){
 		JobHandle hitJobHandle = new BulletHitJob{
-			commandBuffer = commandBufferSystem.CreateCommandBuffer(),
+			commandBuffer = commandBufferSystem.CreateCommandBuffer().ToConcurrent(),
 			world = createPhysicsWorldSystem.PhysicsWorld.CollisionWorld
-		}.ScheduleSingle(this, handle);
+		}.Schedule(bullets, handle);
 
 		// tell bufferSystem to wait for hitJob, then it'll perform
 		// buffered commands

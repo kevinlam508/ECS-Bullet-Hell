@@ -31,7 +31,7 @@ public class AutoShootSystem : JobComponentSystem{
 	struct AutoShootJob : IJobForEachWithEntity<Translation, Rotation, AutoShoot, TimeAlive>{
 
         // stores creates to do after job finishes
-        public EntityCommandBuffer commandBuffer;
+        public EntityCommandBuffer.Concurrent commandBuffer;
 
         // timing to allow consistent sim
 		public float dt;
@@ -52,12 +52,12 @@ public class AutoShootSystem : JobComponentSystem{
             while(shoot.started != 0 && timeAlive.time > shoot.period){
                 // shoot the pattern
                 // buffers commands to do after thread completes
-                Fire(ent, ref position, ref rotation, ref shoot, ref timeAlive);
+                Fire(ent, index, ref position, ref rotation, ref shoot, ref timeAlive);
         		timeAlive.time -= shoot.period;
             }
 		}
 
-        private void Fire(Entity ent, [ReadOnly] ref Translation position, 
+        private void Fire(Entity ent, int index, [ReadOnly] ref Translation position, 
                 [ReadOnly] ref Rotation rotation, [ReadOnly] ref AutoShoot shoot, 
                 ref TimeAlive timeAlive){
             Entity entity = Entity.Null;
@@ -65,10 +65,10 @@ public class AutoShootSystem : JobComponentSystem{
             switch(shoot.pattern){
                 case ShotPattern.FAN:
                     if(shoot.count == 1){
-                        entity = commandBuffer.Instantiate(shoot.bullet);
-                        commandBuffer.SetComponent(entity, 
+                        entity = commandBuffer.Instantiate(index, shoot.bullet);
+                        commandBuffer.SetComponent(index, entity, 
                             new Translation {Value = position.Value});
-                        commandBuffer.SetComponent(entity, 
+                        commandBuffer.SetComponent(index, entity, 
                             new Rotation {Value = math.mul(
                                 math.normalize(rotation.Value),
                                 quaternion.AxisAngle(
@@ -77,7 +77,7 @@ public class AutoShootSystem : JobComponentSystem{
                             });
 
                         // need to make up for delayed spawn time
-                        commandBuffer.AddComponent(entity,
+                        commandBuffer.AddComponent(index, entity,
                             new LostTime{
                                 lostTime = timeAlive.time - shoot.period
                             });
@@ -88,10 +88,10 @@ public class AutoShootSystem : JobComponentSystem{
                         interval = shoot.angle / (shoot.count - 1);
                         float halfAngle = shoot.angle / 2;
                         for(float rad = -halfAngle; rad <= halfAngle; rad += interval){
-                            entity = commandBuffer.Instantiate(shoot.bullet);
-                            commandBuffer.SetComponent(entity, 
+                            entity = commandBuffer.Instantiate(index, shoot.bullet);
+                            commandBuffer.SetComponent(index, entity, 
                                 new Translation {Value = position.Value});
-                            commandBuffer.SetComponent(entity, 
+                            commandBuffer.SetComponent(index, entity, 
                                 new Rotation {Value = math.mul(
                                     math.normalize(rotation.Value),
                                     quaternion.AxisAngle(
@@ -100,7 +100,7 @@ public class AutoShootSystem : JobComponentSystem{
                                 });
 
                             // need to make up for delayed spawn time
-                            commandBuffer.AddComponent(entity,
+                            commandBuffer.AddComponent(index, entity,
                                 new LostTime{
                                     lostTime = timeAlive.time - shoot.period
                                 });
@@ -111,10 +111,10 @@ public class AutoShootSystem : JobComponentSystem{
                 case ShotPattern.AROUND:
                     interval = (float)(2 * math.PI / shoot.count);
                     for(float rad = 0.0f; rad < 2 * math.PI; rad += interval){
-                        entity = commandBuffer.Instantiate(shoot.bullet);
-                        commandBuffer.SetComponent(entity, 
+                        entity = commandBuffer.Instantiate(index, shoot.bullet);
+                        commandBuffer.SetComponent(index, entity, 
                             new Translation {Value = position.Value});
-                        commandBuffer.SetComponent(entity, 
+                        commandBuffer.SetComponent(index, entity, 
                             new Rotation {Value = math.mul(
                                 math.normalize(rotation.Value),
                                 quaternion.AxisAngle(
@@ -123,7 +123,7 @@ public class AutoShootSystem : JobComponentSystem{
                             });
 
                         // need to make up for delayed spawn time
-                        commandBuffer.AddComponent(entity,
+                        commandBuffer.AddComponent(index, entity,
                             new LostTime{
                                 lostTime = timeAlive.time - shoot.period
                             });
@@ -154,9 +154,9 @@ public class AutoShootSystem : JobComponentSystem{
 
         // init job and run it on entities in the shooters group
         JobHandle jobHandle = new AutoShootJob{
-            commandBuffer = commandBufferSystem.CreateCommandBuffer(),
+            commandBuffer = commandBufferSystem.CreateCommandBuffer().ToConcurrent(),
         	dt = Time.deltaTime
-        }.ScheduleSingle(shooters, handle);
+        }.Schedule(shooters, handle);
 
         // tells buffer systems to wait for the job to finish, then
         //   it will perform the commands buffered
