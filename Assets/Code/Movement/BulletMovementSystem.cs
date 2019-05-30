@@ -8,6 +8,7 @@ using Unity.Collections;
 
 using CustomConstants;
 
+[UpdateBefore(typeof(TrackerRemovalSystem))]
 public class BulletMovementSystem : JobComponentSystem{
 	public enum MoveType : int { LINEAR, CURVE, HOMING, ENUM_END }
 
@@ -20,6 +21,7 @@ public class BulletMovementSystem : JobComponentSystem{
 	// entities to operate on
 	private EntityQuery bullets;
 	private EntityQuery newBullets;
+	private EntityQuery reflectBullets;
 
 	// singleton to movement functions
 	private MoveUtility util;
@@ -56,6 +58,17 @@ public class BulletMovementSystem : JobComponentSystem{
                 }
             });
 
+		// like a bullet, but also has DelayedReflection
+		reflectBullets = GetEntityQuery(new EntityQueryDesc{
+                All = new ComponentType[]{
+                	typeof(TimeAlive), 
+                	typeof(Translation),
+                	typeof(Rotation),
+                    ComponentType.ReadOnly<BulletMovement>(),
+                    ComponentType.ReadOnly<DelayedReflection>()
+                }
+            });
+
 		accumeT = 0f;
 		util = new MoveUtility{timeStep = Constants.TIME_STEP};
 	}
@@ -76,6 +89,10 @@ public class BulletMovementSystem : JobComponentSystem{
     		useT += Constants.TIME_STEP;
     	}
 
+    	ReflectBulletsJob reflectJob = new ReflectBulletsJob{
+        	util = util
+    	};
+
     	// setup jobs and schedule them
         MoveBulletsJob normalJob = new MoveBulletsJob{
         	dt = useT,
@@ -91,7 +108,8 @@ public class BulletMovementSystem : JobComponentSystem{
         };
 
         // run the jobs on respective groups of entities
-        return normalJob.Schedule(bullets, newJob.Schedule(newBullets, handle));
+        return normalJob.Schedule(bullets, newJob.Schedule(newBullets, 
+        	reflectJob.Schedule(reflectBullets, handle)));
     }
 
 
@@ -205,6 +223,27 @@ public class BulletMovementSystem : JobComponentSystem{
 				ref TimeAlive timeAlive, [ReadOnly] ref LostTime lostTime){
 			util.MoveBullet(ref position, ref rotation, ref bullet, ref timeAlive, 
 				dt + lostTime.lostTime, ref playerPos);
+		}
+	}
+
+	struct ReflectBulletsJob : IJobForEach<Translation, Rotation, DelayedReflection>{
+
+		// movement utility
+		[ReadOnly] public MoveUtility util;
+
+		public void Execute(ref Translation pos, ref Rotation rot, 
+				[ReadOnly] ref DelayedReflection reflect){
+
+			// move exactly outside other entity so bullet is never
+			//   trapped inside the other entity
+			pos.Value = pos.Value + (reflect.fraction * reflect.reflectNorm);
+
+			// reflect facing direction
+			float3 current = util.up(rot.Value);
+			float3 goal = math.reflect(current, reflect.reflectNorm);
+			rot.Value = quaternion.LookRotation(
+				math.forward(rot.Value),
+				math.normalize(goal - current));
 		}
 	}
 }

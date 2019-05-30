@@ -52,7 +52,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 77f404d04054c644389e2bcb9aed61cb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stats: {fileID: 11400000, guid: 272857b2be1ebc44082aa57a83f2c329, type: 2}
+  stats: {fileID: 11400000, guid: 5c6fcaf10cd38f147b134a282c8351fe, type: 2}
 --- !u!33 &1340001947393781055
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -179,8 +179,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_MotionType: 0
   m_Mass: 1
-  m_LinearDamping: 0.01
-  m_AngularDamping: 0.05
+  m_LinearDamping: 0
+  m_AngularDamping: 0
   m_InitialLinearVelocity:
     x: 0
     y: 0

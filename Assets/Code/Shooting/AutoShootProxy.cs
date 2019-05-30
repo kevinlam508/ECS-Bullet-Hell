@@ -40,6 +40,9 @@ public class AutoShootProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvert
     [Tooltip("Stats on the bullet's movement")]
     public BulletMovementData movementStats;
 
+    [Tooltip("Material of the bullet")]
+    public Material bulletMaterial;
+
     [Tooltip("Number of bullets in this volley")]
     public int count;
 
@@ -66,7 +69,7 @@ public class AutoShootProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvert
 
         // set bullet's movement stats
         bullet.GetComponent<BulletMovementProxy>().stats = movementStats;
-        bullet.GetComponent<MeshRenderer>().material = movementStats.material;
+        bullet.GetComponent<MeshRenderer>().material = bulletMaterial;
 
         AutoShoot shootData = new AutoShoot
         {

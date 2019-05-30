@@ -14,6 +14,4 @@ public class BulletMovementData : ScriptableObject{
 
     [Tooltip("Rotation in degrees per second")]
     public float rotateSpeed;
-
-    public Material material;
 }

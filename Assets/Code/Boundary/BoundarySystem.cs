@@ -129,6 +129,10 @@ public class BoundarySystem : JobComponentSystem{
 			right = this.right
 		}.Schedule(deleteOnBound, inBoundJob);
 
+        // tell bufferSystem to wait for the process job, then it'll perform
+        // buffered commands
+        commandBufferSystem.AddJobHandleForProducer(deleteJob);
+
         return deleteJob;
     }
 }

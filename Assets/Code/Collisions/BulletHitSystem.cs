@@ -28,7 +28,7 @@ public class BulletHitSystem : JobComponentSystem
         public NativeList<DistanceHit> hits;
 
         // map of entities to hits for process hit job
-        [WriteOnly] public NativeMultiHashMap<Entity, Entity>.Concurrent collisions;
+        [WriteOnly] public NativeMultiHashMap<Entity, DistanceHit> collisions;
 
         public unsafe void Execute(Entity ent, int index, [ReadOnly] ref PhysicsCollider collider, 
                 [ReadOnly] ref Translation pos, [ReadOnly] ref Rotation rot){
@@ -47,20 +47,14 @@ public class BulletHitSystem : JobComponentSystem
             world.CalculateDistance(input, ref hits);
 
             for(int i = 0; i < hits.Length; ++i){
-                // get the index of the body the player hit
-                int bodyIdx = hits[i].RigidBodyIndex;
-
-                // get the body from the world, then entity from the body
-                Entity other = world.Bodies[bodyIdx].Entity;
-
-                collisions.Add(ent, other);
+                collisions.Add(ent, hits[i]);
             }
 
         }
     }
 
-    [BurstCompile]
-    struct ProcessHitsJob : IJobNativeMultiHashMapVisitKeyValue<Entity, Entity>{
+    //[BurstCompile]
+    struct ProcessHitsJob : IJobNativeMultiHashMapVisitKeyValue<Entity, DistanceHit>{
 
         // store commands to be processed outside of jobs
         [WriteOnly] public EntityCommandBuffer.Concurrent commandBuffer;
@@ -68,10 +62,25 @@ public class BulletHitSystem : JobComponentSystem
         // the physics world
         [ReadOnly] public CollisionWorld world;
 
-        public void ExecuteNext(Entity player, Entity other){
+        public void ExecuteNext(Entity player, DistanceHit hitInfo){
             // process the collision
+            // get the index of the body the player hit
+            int bodyIdx = hitInfo.RigidBodyIndex;
+
+            // get the body from the world, then entity from the body
+            Entity other = world.Bodies[bodyIdx].Entity;
+
             // delete other entity for now
-            commandBuffer.DestroyEntity(other.Index, other);
+            //commandBuffer.DestroyEntity(other.Index, other);
+            Reflect(other, hitInfo);
+        }
+
+        private void Reflect(Entity ent, DistanceHit hitInfo){
+            commandBuffer.AddComponent(ent.Index, ent, 
+                new DelayedReflection{
+                    fraction = hitInfo.Fraction,
+                    reflectNorm = hitInfo.SurfaceNormal
+                    });
         }
 
     }
@@ -93,7 +102,7 @@ public class BulletHitSystem : JobComponentSystem
 
     // map of player(s) to entities hit
     // generalizing single player hit in case of multiplayer
-    NativeMultiHashMap<Entity, Entity> collisions;
+    NativeMultiHashMap<Entity, DistanceHit> collisions;
 
 
     protected override void OnCreateManager()
@@ -140,14 +149,14 @@ public class BulletHitSystem : JobComponentSystem
         hits = new NativeList<DistanceHit>(100, Allocator.TempJob);
 
         // first arg is max capacity, setting as max possible collision pairs
-        collisions = new NativeMultiHashMap<Entity, Entity>(
+        collisions = new NativeMultiHashMap<Entity, DistanceHit>(
             bulletGroup.CalculateLength() * playerGroup.CalculateLength(), 
             Allocator.TempJob);
 
         JobHandle hitJobHandle = new CollectHitsJob{
             world = createPhysicsWorldSystem.PhysicsWorld.CollisionWorld,
             hits = hits,
-            collisions = collisions.ToConcurrent()
+            collisions = collisions
         }.ScheduleSingle(playerGroup, handle);
 
         JobHandle processJobHandle = new ProcessHitsJob{

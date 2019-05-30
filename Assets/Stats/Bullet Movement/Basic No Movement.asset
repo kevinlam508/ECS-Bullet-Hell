@@ -10,9 +10,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1348810e30babf24196ac20cbeedb97b, type: 3}
-  m_Name: TestBullet
+  m_Name: Basic No Movement
   m_EditorClassIdentifier: 
-  moveType: 2
-  moveSpeed: 10
-  rotateSpeed: 120
-  material: {fileID: 2100000, guid: ca693843d5ec1724cb764e88f980a489, type: 2}
+  moveType: 0
+  moveSpeed: 0
+  rotateSpeed: 50

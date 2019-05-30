@@ -68,9 +68,9 @@ public class AutoShootSystem : JobComponentSystem{
                 case ShotPattern.FAN:
                     if(shoot.count == 1){
                         entity = commandBuffer.Instantiate(index, shoot.bullet);
-                        commandBuffer.SetComponent<Translation>(index, entity, 
+                        commandBuffer.SetComponent(index, entity, 
                             new Translation {Value = position.Value});
-                        commandBuffer.SetComponent<Rotation>(index, entity, 
+                        commandBuffer.SetComponent(index, entity, 
                             new Rotation {Value = math.mul(
                                 math.normalize(rotation.Value),
                                 quaternion.AxisAngle(
@@ -79,7 +79,7 @@ public class AutoShootSystem : JobComponentSystem{
                             });
 
                         // need to make up for delayed spawn time
-                        commandBuffer.AddComponent<LostTime>(index, entity,
+                        commandBuffer.AddComponent(index, entity,
                             new LostTime{
                                 lostTime = timeAlive.time - shoot.period
                             });
@@ -91,9 +91,9 @@ public class AutoShootSystem : JobComponentSystem{
                         float halfAngle = shoot.angle / 2;
                         for(float rad = -halfAngle; rad <= halfAngle; rad += interval){
                             entity = commandBuffer.Instantiate(index, shoot.bullet);
-                            commandBuffer.SetComponent<Translation>(index, entity, 
+                            commandBuffer.SetComponent(index, entity, 
                                 new Translation {Value = position.Value});
-                            commandBuffer.SetComponent<Rotation>(index, entity, 
+                            commandBuffer.SetComponent(index, entity, 
                                 new Rotation {Value = math.mul(
                                     math.normalize(rotation.Value),
                                     quaternion.AxisAngle(
@@ -102,7 +102,7 @@ public class AutoShootSystem : JobComponentSystem{
                                 });
 
                             // need to make up for delayed spawn time
-                            commandBuffer.AddComponent<LostTime>(index, entity,
+                            commandBuffer.AddComponent(index, entity,
                                 new LostTime{
                                     lostTime = timeAlive.time - shoot.period
                                 });
@@ -114,9 +114,9 @@ public class AutoShootSystem : JobComponentSystem{
                     interval = (float)(2 * math.PI / shoot.count);
                     for(float rad = 0.0f; rad < 2 * math.PI; rad += interval){
                         entity = commandBuffer.Instantiate(index, shoot.bullet);
-                        commandBuffer.SetComponent<Translation>(index, entity, 
+                        commandBuffer.SetComponent(index, entity, 
                             new Translation {Value = position.Value});
-                        commandBuffer.SetComponent<Rotation>(index, entity, 
+                        commandBuffer.SetComponent(index, entity, 
                             new Rotation {Value = math.mul(
                                 math.normalize(rotation.Value),
                                 quaternion.AxisAngle(
@@ -125,7 +125,7 @@ public class AutoShootSystem : JobComponentSystem{
                             });
 
                         // need to make up for delayed spawn time
-                        commandBuffer.AddComponent<LostTime>(index, entity,
+                        commandBuffer.AddComponent(index, entity,
                             new LostTime{
                                 lostTime = timeAlive.time - shoot.period
                             });
