@@ -15,3 +15,4 @@ MonoBehaviour:
   moveType: 2
   moveSpeed: 10
   rotateSpeed: 50
+  material: {fileID: 2100000, guid: ca693843d5ec1724cb764e88f980a489, type: 2}

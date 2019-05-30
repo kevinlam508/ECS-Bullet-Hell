@@ -27,6 +27,8 @@ using Unity.Collections;
 public class AutoShootSystem : JobComponentSystem{
 	public enum ShotPattern : int {FAN, AROUND}
 
+    // still can't be burst compiled since job adds components using
+    //   commandbuffer
     //[BurstCompile]
 	struct AutoShootJob : IJobForEachWithEntity<Translation, Rotation, AutoShoot, TimeAlive>{
 
@@ -66,9 +68,9 @@ public class AutoShootSystem : JobComponentSystem{
                 case ShotPattern.FAN:
                     if(shoot.count == 1){
                         entity = commandBuffer.Instantiate(index, shoot.bullet);
-                        commandBuffer.SetComponent(index, entity, 
+                        commandBuffer.SetComponent<Translation>(index, entity, 
                             new Translation {Value = position.Value});
-                        commandBuffer.SetComponent(index, entity, 
+                        commandBuffer.SetComponent<Rotation>(index, entity, 
                             new Rotation {Value = math.mul(
                                 math.normalize(rotation.Value),
                                 quaternion.AxisAngle(
@@ -77,7 +79,7 @@ public class AutoShootSystem : JobComponentSystem{
                             });
 
                         // need to make up for delayed spawn time
-                        commandBuffer.AddComponent(index, entity,
+                        commandBuffer.AddComponent<LostTime>(index, entity,
                             new LostTime{
                                 lostTime = timeAlive.time - shoot.period
                             });
@@ -89,9 +91,9 @@ public class AutoShootSystem : JobComponentSystem{
                         float halfAngle = shoot.angle / 2;
                         for(float rad = -halfAngle; rad <= halfAngle; rad += interval){
                             entity = commandBuffer.Instantiate(index, shoot.bullet);
-                            commandBuffer.SetComponent(index, entity, 
+                            commandBuffer.SetComponent<Translation>(index, entity, 
                                 new Translation {Value = position.Value});
-                            commandBuffer.SetComponent(index, entity, 
+                            commandBuffer.SetComponent<Rotation>(index, entity, 
                                 new Rotation {Value = math.mul(
                                     math.normalize(rotation.Value),
                                     quaternion.AxisAngle(
@@ -100,7 +102,7 @@ public class AutoShootSystem : JobComponentSystem{
                                 });
 
                             // need to make up for delayed spawn time
-                            commandBuffer.AddComponent(index, entity,
+                            commandBuffer.AddComponent<LostTime>(index, entity,
                                 new LostTime{
                                     lostTime = timeAlive.time - shoot.period
                                 });
@@ -112,9 +114,9 @@ public class AutoShootSystem : JobComponentSystem{
                     interval = (float)(2 * math.PI / shoot.count);
                     for(float rad = 0.0f; rad < 2 * math.PI; rad += interval){
                         entity = commandBuffer.Instantiate(index, shoot.bullet);
-                        commandBuffer.SetComponent(index, entity, 
+                        commandBuffer.SetComponent<Translation>(index, entity, 
                             new Translation {Value = position.Value});
-                        commandBuffer.SetComponent(index, entity, 
+                        commandBuffer.SetComponent<Rotation>(index, entity, 
                             new Rotation {Value = math.mul(
                                 math.normalize(rotation.Value),
                                 quaternion.AxisAngle(
@@ -123,7 +125,7 @@ public class AutoShootSystem : JobComponentSystem{
                             });
 
                         // need to make up for delayed spawn time
-                        commandBuffer.AddComponent(index, entity,
+                        commandBuffer.AddComponent<LostTime>(index, entity,
                             new LostTime{
                                 lostTime = timeAlive.time - shoot.period
                             });

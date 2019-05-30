@@ -30,7 +30,7 @@ Transform:
   m_GameObject: {fileID: 4485524592475101398}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.80948424, y: 0.80948424, z: 0.80948424}
+  m_LocalScale: {x: 0.5, y: 0.5, z: 0.5}
   m_Children:
   - {fileID: 7046581922951015234}
   m_Father: {fileID: 0}
@@ -49,11 +49,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   startDelay: 0
-  period: 0.5
+  period: 0.1
   pattern: 0
-  bullet: {fileID: 316492841909355860, guid: 04139a3bbcc09e0428e8ef555bde8d01, type: 3}
-  count: 1
-  angle: 40
+  movementStats: {fileID: 11400000, guid: 272857b2be1ebc44082aa57a83f2c329, type: 2}
+  count: 2
+  angle: 20
   centerAngle: 0
 --- !u!114 &4485524592475101399
 MonoBehaviour:

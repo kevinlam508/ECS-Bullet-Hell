@@ -66,6 +66,7 @@ public class AutoShootProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvert
 
         // set bullet's movement stats
         bullet.GetComponent<BulletMovementProxy>().stats = movementStats;
+        bullet.GetComponent<MeshRenderer>().material = movementStats.material;
 
         AutoShoot shootData = new AutoShoot
         {

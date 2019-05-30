@@ -24,9 +24,6 @@ public class BulletMovementSystem : JobComponentSystem{
 	// singleton to movement functions
 	private MoveUtility util;
 
-	// for removing TimeLost afterwards
-	private EndSimulationEntityCommandBufferSystem commandBufferSystem;
-
 	protected override void OnCreateManager(){
 
 		// get all entities that have Plyaer and Translation
