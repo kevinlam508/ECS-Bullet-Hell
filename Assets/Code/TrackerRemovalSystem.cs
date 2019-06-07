@@ -49,33 +49,33 @@ public class TrackerRemovalSystem : JobComponentSystem{
 
 	protected override JobHandle OnUpdate(JobHandle handle){
 
+        EntityCommandBuffer.Concurrent buffer = commandBufferSystem.CreateCommandBuffer().ToConcurrent();
+
     	// run job on entities in lostTimeEntities
     	JobHandle lostTimeJob = new RemovalJob<LostTime>{
-    		commandBuffer = commandBufferSystem.CreateCommandBuffer()
-    	}.ScheduleSingle(lostTimeEntities, handle);
+    		commandBuffer = buffer
+    	}.Schedule(lostTimeEntities, handle);
     	
         // run job on entities in lostTimeEntities
         JobHandle reflectJob = new RemovalJob<DelayedReflection>{
-            commandBuffer = commandBufferSystem.CreateCommandBuffer()
-        }.ScheduleSingle(reflectionEntities, handle);
-
-        JobHandle allJobs = JobHandle.CombineDependencies(lostTimeJob, reflectJob);
+            commandBuffer = buffer
+        }.Schedule(reflectionEntities, lostTimeJob);
 
         // tells buffer systems to wait for the job to finish, then
         //   it will perform the commands buffered
-        commandBufferSystem.AddJobHandleForProducer(allJobs);
+        commandBufferSystem.AddJobHandleForProducer(reflectJob);
 
-        return allJobs;
+        return reflectJob;
     }
 
 
 	struct RemovalJob<T> : IJobForEachWithEntity<T>
         where T : struct, IComponentData{
 
-        public EntityCommandBuffer commandBuffer;
+        public EntityCommandBuffer.Concurrent commandBuffer;
 
 		public void Execute(Entity ent, int index, [ReadOnly] ref T component){
-			commandBuffer.RemoveComponent(ent, typeof(T));
+			commandBuffer.RemoveComponent(index, ent, typeof(T));
 		}
 	}
 }

@@ -1,11 +1,9 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using System;
-using Unity.Entities;
-using Unity.Jobs;
-using Unity.Transforms;
-using Unity.Mathematics;
+using System;                       // Serializable
+using Unity.Entities;               // IComponentData, IConvertGameObjectToEntity
+using Unity.Mathematics;            // math
 
 // stores read only info on how to move a bullet for performance
 [Serializable]
@@ -20,19 +18,31 @@ public struct BulletMovement : IComponentData{
 [UnityEngine.DisallowMultipleComponent]
 [RequiresEntityConversion]
 public class BulletMovementProxy : MonoBehaviour, IConvertGameObjectToEntity{
-	
-    public BulletMovementData stats;
     
+    public BulletMovementData stats = null;
+
     // copies monobehavior data into component data
     public void Convert(Entity entity, EntityManager dstManager, 
-        GameObjectConversionSystem conversionSystem){
-    	if(stats != null){
-	        BulletMovement data = new BulletMovement { 
-	        	moveType = stats.moveType,
-				moveSpeed = stats.moveSpeed,
-				rotateSpeed = stats.rotateSpeed
-	        };
-	        dstManager.AddComponentData(entity, data);
-	    }
+            GameObjectConversionSystem conversionSystem){
+
+        BulletMovement data;
+
+        // stats exist, prefill
+        if(stats != null){
+            data = new BulletMovement { 
+                moveType = stats.moveType,
+                moveSpeed = stats.moveSpeed,
+                rotateSpeed = stats.rotateSpeed
+            };
+        }
+        // no stats, make default
+        else{
+            data = new BulletMovement { 
+            	moveType = BulletMovementSystem.MoveType.LINEAR,
+    			moveSpeed = 0,
+    			rotateSpeed = 0
+            };
+        }
+        dstManager.AddComponentData(entity, data);
     }
 }

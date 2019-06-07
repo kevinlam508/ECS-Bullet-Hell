@@ -1,10 +1,10 @@
 ﻿using UnityEngine;
-using Unity.Entities;
-using Unity.Jobs;
-using Unity.Transforms;
-using Unity.Mathematics;
-using Unity.Burst;
-using Unity.Collections;
+using Unity.Entities;     // JobComponentSystem
+using Unity.Jobs;         // IJob*
+using Unity.Transforms;   // Traslation, Rotation
+using Unity.Mathematics;  // math
+using Unity.Burst;        // BurstCompole
+using Unity.Collections;  // Native*
 
 using CustomConstants;
 
@@ -233,6 +233,12 @@ public class BulletMovementSystem : JobComponentSystem{
 
 		public void Execute(ref Translation pos, ref Rotation rot, 
 				[ReadOnly] ref DelayedReflection reflect){
+
+			// ignore z axis
+			reflect.reflectNorm = new float3(
+				reflect.reflectNorm.x,
+				reflect.reflectNorm.y,
+				0);
 
 			// move exactly outside other entity so bullet is never
 			//   trapped inside the other entity

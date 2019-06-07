@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using Unity.Entities;
-using Unity.Mathematics;
+using Unity.Entities;                  // IComponentData, IConvertGameObjectToEntity
+using Unity.Mathematics;               // math
 using UnityEngine;
-using Unity.Collections;
-using UnityEngine.Assertions;
+using UnityEngine.Assertions;          // Assert
+using Unity.Rendering;                 // RenderMesh
 
 [Serializable]
 public struct AutoShoot : IComponentData{
@@ -23,9 +23,24 @@ public struct AutoShoot : IComponentData{
     public float centerAngle; // radians
 }
 
+// component to delay setting the bullet entity because the bullet prefab
+// is reused between multiple shooters and loaded subscenes do not properly
+// handle creating new instances of the base entity
+public struct InitAutoShoot : IComponentData{
+    public Entity baseEnt;
+    public BulletMovement movementStats;
+}
+
 [RequiresEntityConversion]
 public class AutoShootProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvertGameObjectToEntity
 {	
+
+    // init cache and add to scene leaving events
+    public static Dictionary<GameObject, Dictionary<BulletMovementData, Entity>> prefabCache;
+    static AutoShootProxy(){
+        prefabCache = new Dictionary<GameObject, Dictionary<BulletMovementData, Entity>>();
+        SceneSwapper.OnSceneExit += prefabCache.Clear;
+    }
 
     [Header("Timing")]
 	[Tooltip("Time in seconds before the first fire")]
@@ -40,8 +55,8 @@ public class AutoShootProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvert
     [Tooltip("Stats on the bullet's movement")]
     public BulletMovementData movementStats;
 
-    [Tooltip("Material of the bullet")]
-    public Material bulletMaterial;
+    [Tooltip("Base prefab of the bullet")]
+    public GameObject bullet;
 
     [Tooltip("Number of bullets in this volley")]
     public int count;
@@ -53,13 +68,40 @@ public class AutoShootProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvert
     [Range(0, 360)]
     public float centerAngle;
 
-    private GameObject bullet;
-
     // Referenced prefabs have to be declared so that the conversion system knows about them ahead of time
-    // called before convert??? so bullet will be assigned properly
     public void DeclareReferencedPrefabs(List<GameObject> gameObjects){
-        bullet = (GameObject)Resources.Load("Bullet");
+        //bullet.GetComponent<BulletMovementProxy>().stats = movementStats;
         gameObjects.Add(bullet);
+    }
+
+    private Entity GetBulletEntity(EntityManager dstManager, 
+            GameObjectConversionSystem conversionSystem){
+        Entity ent = Entity.Null;
+
+        // already in cache, just get it
+        if(prefabCache.ContainsKey(bullet) && prefabCache[bullet].ContainsKey(movementStats)){
+            ent = prefabCache[bullet][movementStats];
+        }
+        // not in cache, make it and add to cache
+        else{
+            ent = (conversionSystem.HasPrimaryEntity(bullet)) 
+                ? conversionSystem.GetPrimaryEntity(bullet)
+                : conversionSystem.CreateAdditionalEntity(bullet);
+            BulletMovement bm = new BulletMovement{
+                moveType = movementStats.moveType,
+                moveSpeed = movementStats.moveSpeed,
+                rotateSpeed = movementStats.rotateSpeed
+            };
+            dstManager.SetComponentData(ent, bm);
+            //dstManager.AddComponentData(ent, new Prefab());
+
+            if(!prefabCache.ContainsKey(bullet)){
+                prefabCache.Add(bullet, new Dictionary<BulletMovementData, Entity>());
+            }
+            prefabCache[bullet].Add(movementStats, ent);
+        }
+
+        return ent;
     }
 
     // Lets you convert the editor data representation to the entity optimal runtime representation
@@ -67,15 +109,18 @@ public class AutoShootProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvert
             GameObjectConversionSystem conversionSystem){
         Assert.IsTrue(period > 0);
 
-        // set bullet's movement stats
         bullet.GetComponent<BulletMovementProxy>().stats = movementStats;
-        bullet.GetComponent<MeshRenderer>().material = bulletMaterial;
+        Entity bulletEnt =  GetBulletEntity(dstManager, conversionSystem);
+        //Entity bulletEnt =  conversionSystem.GetPrimaryEntity(bullet);
+        // Entity bulletEnt = (conversionSystem.HasPrimaryEntity(bullet)) 
+        //         ? conversionSystem.GetPrimaryEntity(bullet)
+        //         : conversionSystem.CreateAdditionalEntity(bullet);
 
         AutoShoot shootData = new AutoShoot
         {
-            // The referenced prefab will be converted due to DeclareReferencedPrefabs.
-            // So here we simply map the game object to an entity reference to that prefab.
-            bullet = conversionSystem.GetPrimaryEntity(bullet),
+            // The referenced prefab will already be converted due to DeclareReferencedPrefabs.
+            // so just look up the entity version in the conversion system
+            bullet = bulletEnt,
             startDelay = startDelay,
             started = 0,
             period = period,
@@ -85,5 +130,10 @@ public class AutoShootProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvert
             centerAngle = math.radians(centerAngle)
         };
         dstManager.AddComponentData(entity, shootData);
+
+        // dstManager.AddComponentData(entity, new InitAutoShoot{
+        //         baseEnt = bulletEnt,
+        //         movementStats = movementStats.ToBulletMovement()
+        //     });
     }
 }

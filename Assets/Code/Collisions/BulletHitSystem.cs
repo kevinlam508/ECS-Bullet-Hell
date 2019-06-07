@@ -71,8 +71,8 @@ public class BulletHitSystem : JobComponentSystem
             Entity other = world.Bodies[bodyIdx].Entity;
 
             // delete other entity for now
-            //commandBuffer.DestroyEntity(other.Index, other);
-            Reflect(other, hitInfo);
+            commandBuffer.DestroyEntity(other.Index, other);
+            //Reflect(other, hitInfo);
         }
 
         private void Reflect(Entity ent, DistanceHit hitInfo){
