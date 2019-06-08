@@ -5,6 +5,7 @@ using Unity.Transforms;   // Traslation, Rotation
 using Unity.Mathematics;  // math
 using Unity.Burst;        // BurstCompole
 using Unity.Collections;  // Native*
+using Unity.Physics;      // physics things
 
 using CustomConstants;
 
@@ -12,16 +13,12 @@ using CustomConstants;
 public class BulletMovementSystem : JobComponentSystem{
 	public enum MoveType : int { LINEAR, CURVE, HOMING, ENUM_END }
 
-	float accumeT = 0;
-
 	// player tracking
 	private EntityQuery playerGroup;
 	private Entity player = Entity.Null;
 
 	// entities to operate on
-	private EntityQuery bullets;
-	private EntityQuery newBullets;
-	private EntityQuery reflectBullets;
+	private EntityQuery physBullets;
 
 	// singleton to movement functions
 	private MoveUtility util;
@@ -33,44 +30,16 @@ public class BulletMovementSystem : JobComponentSystem{
 			ComponentType.ReadOnly<Player>(), 
 			ComponentType.ReadOnly<Translation>());
 
-		// get all entities with TimeAlive, Translation, Rotation, BulletMovemnt
-		//     BulletMovement will have read only access
-		// ignore entities cannot have LostTime
-		bullets = GetEntityQuery(new EntityQueryDesc{
+		// get all entities with BulletMovement, PhysicsVelocity, Rotation
+		physBullets = GetEntityQuery(new EntityQueryDesc{
                 All = new ComponentType[]{
-                	typeof(TimeAlive), 
-                	typeof(Translation),
-                	typeof(Rotation),
-                    ComponentType.ReadOnly<BulletMovement>()},
-                None = new ComponentType[]{
-                	typeof(LostTime)
-                }
-            });
-
-		// like a bullet, but also has LostTime
-		newBullets = GetEntityQuery(new EntityQueryDesc{
-                All = new ComponentType[]{
-                	typeof(TimeAlive), 
-                	typeof(Translation),
-                	typeof(Rotation),
+                	typeof(PhysicsVelocity),
                     ComponentType.ReadOnly<BulletMovement>(),
-                    ComponentType.ReadOnly<LostTime>()
+                    ComponentType.ReadOnly<Rotation>()
                 }
             });
 
-		// like a bullet, but also has DelayedReflection
-		reflectBullets = GetEntityQuery(new EntityQueryDesc{
-                All = new ComponentType[]{
-                	typeof(TimeAlive), 
-                	typeof(Translation),
-                	typeof(Rotation),
-                    ComponentType.ReadOnly<BulletMovement>(),
-                    ComponentType.ReadOnly<DelayedReflection>()
-                }
-            });
-
-		accumeT = 0f;
-		util = new MoveUtility{timeStep = Constants.TIME_STEP};
+		util = new MoveUtility();
 	}
 
     protected override JobHandle OnUpdate(JobHandle handle){
@@ -81,41 +50,14 @@ public class BulletMovementSystem : JobComponentSystem{
     		ents.Dispose();
     	}
 
-    	// use only multiples of TIME_STEP of time, store any extra
-    	accumeT += Time.deltaTime;
-    	float useT = 0;
-    	while(accumeT > Constants.TIME_STEP){
-    		accumeT -= Constants.TIME_STEP;
-    		useT += Constants.TIME_STEP;
-    	}
-
-    	ReflectBulletsJob reflectJob = new ReflectBulletsJob{
-        	util = util
+    	SetPhysVelJob velJob = new SetPhysVelJob{
+    		util = util
     	};
-
-    	// setup jobs and schedule them
-        MoveBulletsJob normalJob = new MoveBulletsJob{
-        	dt = useT,
-        	timeStep = Constants.TIME_STEP,
-        	playerPos = EntityManager.GetComponentData<Translation>(player),
-        	util = util
-        };
-        MoveNewBulletsJob newJob = new MoveNewBulletsJob{
-        	dt = useT,
-        	timeStep = Constants.TIME_STEP,
-        	playerPos = EntityManager.GetComponentData<Translation>(player),
-        	util = util
-        };
-
-        // run the jobs on respective groups of entities
-        return normalJob.Schedule(bullets, newJob.Schedule(newBullets, 
-        	reflectJob.Schedule(reflectBullets, handle)));
+    	return velJob.Schedule(physBullets, handle);
     }
 
 
 	struct MoveUtility{
-
-		public float timeStep;
 
 		public float3 up(quaternion q){
 			return new float3(
@@ -123,133 +65,25 @@ public class BulletMovementSystem : JobComponentSystem{
 				1 - 2 * (q.value.x*q.value.x + q.value.z*q.value.z),
 				2 * (q.value.y*q.value.z + q.value.w*q.value.x));
 		}
+	}
 
-		public void MoveBullet(ref Translation position, ref Rotation rotation, 
-				[ReadOnly] ref BulletMovement bullet, ref TimeAlive timeAlive, 
-				float dt, [ReadOnly] ref Translation targetPos){
+	// only operators on the listed components
+	struct SetPhysVelJob : IJobForEach<BulletMovement, PhysicsVelocity, Rotation>{
 
-			for(float t = 0; t < dt; t += timeStep){
-				switch(bullet.moveType){
-					case MoveType.LINEAR:
-						Move(ref position, ref rotation, ref bullet, 
-							ref timeAlive, timeStep);
-						break;
-					case MoveType.CURVE:
-						Rotate(ref rotation, ref bullet, ref timeAlive, timeStep);
-						Move(ref position, ref rotation, ref bullet, 
-							ref timeAlive, timeStep);
-						break;
-					case MoveType.HOMING:
-						Move(ref position, ref rotation, ref bullet, 
-							ref timeAlive, timeStep);
-						TurnTowards(ref position, ref rotation, ref bullet,
-							ref timeAlive, timeStep, ref targetPos);
-						break;
-					default:
-						break;
-				}
+		public MoveUtility util;
+
+		public void Execute([ReadOnly] ref BulletMovement bm, ref PhysicsVelocity vel,
+				[ReadOnly] ref Rotation rotation){
+			float3 up = util.up(rotation.Value);
+
+			vel.Linear = math.normalize(up) * bm.moveSpeed;
+			float3 angularVel = new float3(0, 0, 0);
+			switch(bm.moveType){
+				case MoveType.CURVE:
+					angularVel.z = bm.rotateSpeed;
+					break;
 			}
-
-			timeAlive.time += dt;
-		}
-
-		// move forward
-		public void Move(ref Translation pos, ref Rotation rot, 
-				[ReadOnly] ref BulletMovement bullet,
-				ref TimeAlive timeAlive, float dt){
-			pos.Value = pos.Value + (timeStep * bullet.moveSpeed * 
-				up(rot.Value));
-		}
-
-		public void Rotate(ref Rotation rot, [ReadOnly] ref BulletMovement bullet, 
-				ref TimeAlive timeAlive, float dt){
-			rot.Value = math.mul(
-				math.normalize(rot.Value), // original rotation
-				quaternion.AxisAngle(math.forward(rot.Value), 
-					math.radians(bullet.rotateSpeed) * timeStep)); // angle
-		}
-
-		// turn up towards player
-		public void TurnTowards(ref Translation pos, ref Rotation rot, 
-				[ReadOnly] ref BulletMovement bullet, ref TimeAlive timeAlive,
-				float dt, ref Translation target){
-			float3 goal = math.normalize(target.Value - pos.Value);
-			float3 current = math.normalize(up(rot.Value));
-			rot.Value = math.slerp(
-				rot.Value,
-				quaternion.LookRotation(
-					math.forward(rot.Value),
-					goal - current),
-				math.radians(math.abs(bullet.rotateSpeed)) * dt);
-		}
-	}
-
-	// operates on entities with the 4 listed components
-	// uses up as forward movement direction since this is in 2D space
-	[BurstCompile]
-	struct MoveBulletsJob : IJobForEach<Translation, Rotation, BulletMovement, TimeAlive>{
-
-		// timing to allow consistent sim
-		public float dt, timeStep;
-
-		// position of player to home onto
-		[ReadOnly] public Translation playerPos;
-
-		// movement utility
-		[ReadOnly] public MoveUtility util;
-
-		public void Execute(ref Translation position, ref Rotation rotation, 
-				[ReadOnly] ref BulletMovement bullet, ref TimeAlive timeAlive){
-			util.MoveBullet(ref position, ref rotation, ref bullet, ref timeAlive, 
-				dt, ref playerPos);
-		}
-	}
-
-
-	// job to process time lost by a bullet due to spawn delay
-	struct MoveNewBulletsJob : IJobForEach<Translation, Rotation, BulletMovement, TimeAlive, LostTime>{
-
-		// timing to allow consistent sim
-		public float dt, timeStep;
-
-		// position of player to home onto
-		[ReadOnly] public Translation playerPos;
-
-		// movement utility
-		[ReadOnly] public MoveUtility util;
-
-		public void Execute(ref Translation position, 
-				ref Rotation rotation, [ReadOnly] ref BulletMovement bullet, 
-				ref TimeAlive timeAlive, [ReadOnly] ref LostTime lostTime){
-			util.MoveBullet(ref position, ref rotation, ref bullet, ref timeAlive, 
-				dt + lostTime.lostTime, ref playerPos);
-		}
-	}
-
-	struct ReflectBulletsJob : IJobForEach<Translation, Rotation, DelayedReflection>{
-
-		// movement utility
-		[ReadOnly] public MoveUtility util;
-
-		public void Execute(ref Translation pos, ref Rotation rot, 
-				[ReadOnly] ref DelayedReflection reflect){
-
-			// ignore z axis
-			reflect.reflectNorm = new float3(
-				reflect.reflectNorm.x,
-				reflect.reflectNorm.y,
-				0);
-
-			// move exactly outside other entity so bullet is never
-			//   trapped inside the other entity
-			pos.Value = pos.Value + (reflect.fraction * reflect.reflectNorm);
-
-			// reflect facing direction
-			float3 current = util.up(rot.Value);
-			float3 goal = math.reflect(current, reflect.reflectNorm);
-			rot.Value = quaternion.LookRotation(
-				math.forward(rot.Value),
-				math.normalize(goal - current));
+			vel.Angular = angularVel;
 		}
 	}
 }

@@ -14,4 +14,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   moveType: 1
   moveSpeed: 10
-  rotateSpeed: 180
+  rotateSpeed: 10

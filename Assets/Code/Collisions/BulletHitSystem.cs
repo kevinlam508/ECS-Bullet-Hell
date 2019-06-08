@@ -1,8 +1,8 @@
 using UnityEngine;
 using Unity.Entities;
-using Unity.Physics;
-using Unity.Physics.Extensions;
-using Unity.Physics.Systems;      
+using Unity.Physics;             // most physics things
+using Unity.Physics.LowLevel;    // CollisionEvents
+using Unity.Physics.Systems;     // physics systems
 using Unity.Jobs;                // job interfaces, JobComponentSystems
 using Unity.Transforms;          // Traslation, Rotation
 using Unity.Collections;         // NativeList, NativeMultiHashMap
@@ -11,50 +11,60 @@ using Unity.Burst;
 
 using System.Collections;
 
+using CollisionEvent = Unity.Physics.LowLevel.CollisionEvent;
+
 [UpdateAfter(typeof(BulletMovementSystem))]
 [UpdateAfter(typeof(PlayerMovementSystem))]
 [UpdateAfter(typeof(BuildPhysicsWorld))]
 [UpdateBefore(typeof(StepPhysicsWorld))]
 public class BulletHitSystem : JobComponentSystem
 {
+    // abstracted incase more data needed later
+    struct CollisionInfo{
+        public int bodyIdx;
+    }
 
     [BurstCompile]
-    struct CollectHitsJob : IJobForEachWithEntity<PhysicsCollider, Translation, Rotation>{
+    struct CollectHitsJob : IContactsJob{
 
-        // physics world to ask about collisions
+        // the physics world
         [ReadOnly] public CollisionWorld world;
 
-        // temp storage for hits
-        public NativeList<DistanceHit> hits;
-
         // map of entities to hits for process hit job
-        [WriteOnly] public NativeMultiHashMap<Entity, DistanceHit> collisions;
+        [WriteOnly] public NativeMultiHashMap<Entity, CollisionInfo>.Concurrent playerCollisions;
 
-        public unsafe void Execute(Entity ent, int index, [ReadOnly] ref PhysicsCollider collider, 
-                [ReadOnly] ref Translation pos, [ReadOnly] ref Rotation rot){
+        public uint playerMask;
 
-            hits.Clear();
+        public unsafe void Execute(ref ModifiableContactHeader contactHeader, 
+                ref ModifiableContactPoint contactPoint){
 
-            // params for the collision
-            ColliderDistanceInput input = new ColliderDistanceInput
-            {
-                Collider = collider.ColliderPtr,
-                Transform = new RigidTransform(rot.Value, pos.Value),
-                MaxDistance = 0
-            };
+            int idxA = contactHeader.BodyIndexPair.BodyAIndex;
+            int idxB = contactHeader.BodyIndexPair.BodyBIndex;
+            RigidBody rbA = world.Bodies[idxA];
+            RigidBody rbB = world.Bodies[idxB];
 
-            // poll for nearest collisions with player
-            world.CalculateDistance(input, ref hits);
+            int playerIdx = 0, bulletIdx = 0;
+            Entity playerEnt = Entity.Null;
+            if((rbA.Collider->Filter.BelongsTo & playerMask) != 0){
+                playerIdx = idxA;
+                bulletIdx = idxB;
+                playerEnt = rbA.Entity;
 
-            for(int i = 0; i < hits.Length; ++i){
-                collisions.Add(ent, hits[i]);
+            }
+            else if((rbB.Collider->Filter.BelongsTo & playerMask) != 0){
+                playerIdx = idxB;
+                bulletIdx = idxA;
+                playerEnt = rbB.Entity;
             }
 
+            playerCollisions.Add(playerEnt, new CollisionInfo{
+                    bodyIdx = bulletIdx
+                });
         }
     }
 
     //[BurstCompile]
-    struct ProcessHitsJob : IJobNativeMultiHashMapVisitKeyValue<Entity, DistanceHit>{
+    struct ProcessHitsJob : IJobNativeMultiHashMapVisitKeyValue<Entity, CollisionInfo>{
 
         // store commands to be processed outside of jobs
         [WriteOnly] public EntityCommandBuffer.Concurrent commandBuffer;
@@ -62,10 +72,10 @@ public class BulletHitSystem : JobComponentSystem
         // the physics world
         [ReadOnly] public CollisionWorld world;
 
-        public void ExecuteNext(Entity player, DistanceHit hitInfo){
+        public void ExecuteNext(Entity player, CollisionInfo hitInfo){
             // process the collision
             // get the index of the body the player hit
-            int bodyIdx = hitInfo.RigidBodyIndex;
+            int bodyIdx = hitInfo.bodyIdx;
 
             // get the body from the world, then entity from the body
             Entity other = world.Bodies[bodyIdx].Entity;
@@ -75,21 +85,14 @@ public class BulletHitSystem : JobComponentSystem
             //Reflect(other, hitInfo);
         }
 
-        private void Reflect(Entity ent, DistanceHit hitInfo){
-            commandBuffer.AddComponent(ent.Index, ent, 
-                new DelayedReflection{
-                    fraction = hitInfo.Fraction,
-                    reflectNorm = hitInfo.SurfaceNormal
-                    });
-        }
-
     }
 
     // buffer to entity deletion
     EndSimulationEntityCommandBufferSystem commandBufferSystem;
 
-    // phys world that will be polled in job
-    BuildPhysicsWorld createPhysicsWorldSystem;
+    // phys systems set callbacks up with
+    BuildPhysicsWorld buildPhysWorld;
+    StepPhysicsWorld stepPhysWorld;
 
     // all entities that count as players
     EntityQuery playerGroup;
@@ -97,18 +100,19 @@ public class BulletHitSystem : JobComponentSystem
     // all entities that count as bullets
     EntityQuery bulletGroup;
 
-    // temp storage to collect hits, alloc once and reuse space
-    NativeList<DistanceHit> hits;
-
     // map of player(s) to entities hit
     // generalizing single player hit in case of multiplayer
-    NativeMultiHashMap<Entity, DistanceHit> collisions;
+    NativeMultiHashMap<Entity, CollisionInfo> playerCollisions;
+
+    uint playerMask;
 
 
     protected override void OnCreateManager()
     {
+        // get other systems
         commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
-        createPhysicsWorldSystem = World.GetOrCreateSystem<BuildPhysicsWorld>();
+        buildPhysWorld = World.GetOrCreateSystem<BuildPhysicsWorld>();
+        stepPhysWorld = World.GetOrCreateSystem<StepPhysicsWorld>();
 
         playerGroup = GetEntityQuery(new EntityQueryDesc{
                 All = new ComponentType[]{
@@ -125,14 +129,13 @@ public class BulletHitSystem : JobComponentSystem
                     ComponentType.ReadOnly<Rotation>(),
                     ComponentType.ReadOnly<Translation>()}
             });
+
+        playerMask = 1 << 3;
     }
 
     private void DisposeContainers(){
-        if(hits.IsCreated){
-            hits.Dispose();
-        }
-        if(collisions.IsCreated){
-            collisions.Dispose();
+        if(playerCollisions.IsCreated){
+            playerCollisions.Dispose();
         }
     }
 
@@ -143,31 +146,36 @@ public class BulletHitSystem : JobComponentSystem
 
     protected override JobHandle OnUpdate(JobHandle handle){
 
-        DisposeContainers();
+        // delegate for physics to add my jobs to its pipeline
+        SimulationCallbacks.Callback callback = (ref ISimulation sim, 
+            ref PhysicsWorld world, JobHandle deps) =>
+        {
+            // delete containers from previous frame
+            DisposeContainers();
 
-        // both conatainers will only last for the jobs, so using TempJob alloc
-        hits = new NativeList<DistanceHit>(100, Allocator.TempJob);
+            // first arg is max capacity, setting as max possible collision pairs
+            playerCollisions = new NativeMultiHashMap<Entity, CollisionInfo>(
+                bulletGroup.CalculateLength() * playerGroup.CalculateLength(), 
+                Allocator.TempJob);
 
-        // first arg is max capacity, setting as max possible collision pairs
-        collisions = new NativeMultiHashMap<Entity, DistanceHit>(
-            bulletGroup.CalculateLength() * playerGroup.CalculateLength(), 
-            Allocator.TempJob);
+            JobHandle collectJob = new CollectHitsJob{
+                world = buildPhysWorld.PhysicsWorld.CollisionWorld,
+                playerCollisions = playerCollisions.ToConcurrent(),
+                playerMask = playerMask
+            }.Schedule(sim, ref world, deps);
 
-        JobHandle hitJobHandle = new CollectHitsJob{
-            world = createPhysicsWorldSystem.PhysicsWorld.CollisionWorld,
-            hits = hits,
-            collisions = collisions
-        }.ScheduleSingle(playerGroup, handle);
+            JobHandle processJob = new ProcessHitsJob{
+                commandBuffer = commandBufferSystem.CreateCommandBuffer().ToConcurrent(),
+                world = buildPhysWorld.PhysicsWorld.CollisionWorld
+            }.Schedule(playerCollisions, 1, collectJob);
+            commandBufferSystem.AddJobHandleForProducer(processJob);
 
-        JobHandle processJobHandle = new ProcessHitsJob{
-            commandBuffer = commandBufferSystem.CreateCommandBuffer().ToConcurrent(),
-            world = createPhysicsWorldSystem.PhysicsWorld.CollisionWorld
-        }.Schedule(collisions, 64, hitJobHandle);
+            return processJob;
+        };
 
-        // tell bufferSystem to wait for the process job, then it'll perform
-        // buffered commands
-        commandBufferSystem.AddJobHandleForProducer(processJobHandle);
+        stepPhysWorld.EnqueueCallback(SimulationCallbacks.Phase.PostCreateContacts, 
+            callback);
 
-        return processJobHandle;
+        return handle;
     }
 }

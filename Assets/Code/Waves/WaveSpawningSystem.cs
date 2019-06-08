@@ -73,6 +73,10 @@ public class WaveSpawningSystem : JobComponentSystem
 		NativeSortExtension.Sort<WaveData>(waves);
 	}
 
+	public void ClearWaves(){
+		waves.Clear();
+	}
+
     protected override JobHandle OnUpdate(JobHandle dependencies){
     	totalTime += Time.deltaTime;
     	if(waves.IsCreated){

@@ -36,7 +36,7 @@ public class SceneSwapper : MonoBehaviour
             	entManager.DestroyEntity(ent);
             }
             ents.Dispose();
-
+            
 			SceneManager.LoadScene(nextScene);
 		}
     }
