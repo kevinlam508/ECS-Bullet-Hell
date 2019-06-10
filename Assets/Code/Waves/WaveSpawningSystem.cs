@@ -74,12 +74,16 @@ public class WaveSpawningSystem : JobComponentSystem
 	}
 
 	public void ClearWaves(){
-		waves.Clear();
+		DisposeContainers();
+	}
+
+	public void ResetWaves(){
+		totalTime = 0;
 	}
 
     protected override JobHandle OnUpdate(JobHandle dependencies){
     	totalTime += Time.deltaTime;
-    	if(waves.IsCreated){
+    	if(waves.IsCreated && waves.Length > 0){
     		dependencies = new WaveSpawnJob{
     				waves = waves,
     				commandBuffer = commandBufferSystem.CreateCommandBuffer().ToConcurrent(),
@@ -98,6 +102,8 @@ public class WaveSpawningSystem : JobComponentSystem
     }
 
     void DisposeContainers(){
-        waves.Dispose();
+    	if(waves.IsCreated){
+        	waves.Dispose();
+    	}
     }
 }

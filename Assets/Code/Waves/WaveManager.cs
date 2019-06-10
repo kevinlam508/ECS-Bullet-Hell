@@ -22,10 +22,16 @@ public class WaveManager : MonoBehaviour
 
 		// init waves for spawn system
 		WaveSpawningSystem spawnSystem = World.Active.GetOrCreateSystem<WaveSpawningSystem>();
-		spawnSystem.AddWaves(waves);
+		if(waves.Count > 0){
+			spawnSystem.AddWaves(waves);
+			spawnSystem.ResetWaves();
+			spawnSystem.Enabled = true;
 
-		// fix spawner exiting
-		SceneSwapper.OnSceneExit += spawnSystem.ClearWaves;
-		Destroy(gameObject);
+			// fix spawner exiting
+			SceneSwapper.OnSceneExit += () => { spawnSystem.Enabled = false; };
+			SceneSwapper.OnSceneExit += spawnSystem.ClearWaves;
+			Destroy(gameObject);
+		}
+
 	}
 }

@@ -34,6 +34,12 @@ public class BulletHitSystem : JobComponentSystem
         [WriteOnly] public NativeMultiHashMap<Entity, CollisionInfo>.Concurrent playerCollisions;
 
         public uint playerMask;
+        public uint bulletMask;
+
+        // sets max collisions to be num bullets * num players
+        // but should have never been more than that in playerCollisions anyways
+        public int count;
+        public int cap;
 
         public unsafe void Execute(ref ModifiableContactHeader contactHeader, 
                 ref ModifiableContactPoint contactPoint){
@@ -57,9 +63,12 @@ public class BulletHitSystem : JobComponentSystem
                 playerEnt = rbB.Entity;
             }
 
-            playerCollisions.Add(playerEnt, new CollisionInfo{
-                    bodyIdx = bulletIdx
-                });
+            if(count < cap){
+                playerCollisions.Add(playerEnt, new CollisionInfo{
+                        bodyIdx = bulletIdx
+                    });
+                ++count;
+            }
         }
     }
 
@@ -105,7 +114,7 @@ public class BulletHitSystem : JobComponentSystem
     NativeMultiHashMap<Entity, CollisionInfo> playerCollisions;
 
     uint playerMask;
-
+    uint bulletMask;
 
     protected override void OnCreateManager()
     {
@@ -131,6 +140,7 @@ public class BulletHitSystem : JobComponentSystem
             });
 
         playerMask = 1 << 3;
+        bulletMask = 1 << 0;
     }
 
     private void DisposeContainers(){
@@ -158,10 +168,15 @@ public class BulletHitSystem : JobComponentSystem
                 bulletGroup.CalculateLength() * playerGroup.CalculateLength(), 
                 Allocator.TempJob);
 
+            Debug.Log(playerCollisions.Capacity);
+
             JobHandle collectJob = new CollectHitsJob{
                 world = buildPhysWorld.PhysicsWorld.CollisionWorld,
                 playerCollisions = playerCollisions.ToConcurrent(),
-                playerMask = playerMask
+                playerMask = playerMask,
+                bulletMask = bulletMask,
+                count = 0,
+                cap = playerCollisions.Capacity
             }.Schedule(sim, ref world, deps);
 
             JobHandle processJob = new ProcessHitsJob{
