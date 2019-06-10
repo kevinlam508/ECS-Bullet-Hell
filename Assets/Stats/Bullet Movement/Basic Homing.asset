@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: Basic Homing
   m_EditorClassIdentifier: 
   moveType: 2
-  moveSpeed: 10
-  rotateSpeed: 120
+  moveSpeed: 5
+  rotateSpeed: 720

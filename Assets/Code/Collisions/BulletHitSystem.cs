@@ -167,9 +167,7 @@ public class BulletHitSystem : JobComponentSystem
             playerCollisions = new NativeMultiHashMap<Entity, CollisionInfo>(
                 bulletGroup.CalculateLength() * playerGroup.CalculateLength(), 
                 Allocator.TempJob);
-
-            Debug.Log(playerCollisions.Capacity);
-
+            
             JobHandle collectJob = new CollectHitsJob{
                 world = buildPhysWorld.PhysicsWorld.CollisionWorld,
                 playerCollisions = playerCollisions.ToConcurrent(),

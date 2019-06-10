@@ -23,14 +23,6 @@ public struct AutoShoot : IComponentData{
     public float centerAngle; // radians
 }
 
-// component to delay setting the bullet entity because the bullet prefab
-// is reused between multiple shooters and loaded subscenes do not properly
-// handle creating new instances of the base entity
-public struct InitAutoShoot : IComponentData{
-    public Entity baseEnt;
-    public BulletMovement movementStats;
-}
-
 [RequiresEntityConversion]
 public class AutoShootProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvertGameObjectToEntity
 {	
@@ -87,13 +79,9 @@ public class AutoShootProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvert
             ent = (conversionSystem.HasPrimaryEntity(bullet)) 
                 ? conversionSystem.GetPrimaryEntity(bullet)
                 : conversionSystem.CreateAdditionalEntity(bullet);
-            BulletMovement bm = new BulletMovement{
-                moveType = movementStats.moveType,
-                moveSpeed = movementStats.moveSpeed,
-                rotateSpeed = movementStats.rotateSpeed
-            };
+            BulletMovement bm = movementStats.ToBulletMovement();
             dstManager.SetComponentData(ent, bm);
-            //dstManager.AddComponentData(ent, new Prefab());
+            dstManager.AddComponentData(ent, new Prefab());
 
             if(!prefabCache.ContainsKey(bullet)){
                 prefabCache.Add(bullet, new Dictionary<BulletMovementData, Entity>());
@@ -109,7 +97,7 @@ public class AutoShootProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvert
             GameObjectConversionSystem conversionSystem){
         Assert.IsTrue(period > 0);
 
-        bullet.GetComponent<BulletMovementProxy>().stats = movementStats;
+        //bullet.GetComponent<BulletMovementProxy>().stats = movementStats;
         Entity bulletEnt =  GetBulletEntity(dstManager, conversionSystem);
         //Entity bulletEnt =  conversionSystem.GetPrimaryEntity(bullet);
         // Entity bulletEnt = (conversionSystem.HasPrimaryEntity(bullet)) 

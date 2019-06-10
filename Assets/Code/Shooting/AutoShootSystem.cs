@@ -63,8 +63,7 @@ public class AutoShootSystem : JobComponentSystem{
 		}
 
         private void CreateBullet(int index, [ReadOnly] ref Translation position,
-                [ReadOnly] ref Rotation rotation, Entity bullet,
-                float timeLost, float angle){
+                [ReadOnly] ref Rotation rotation, Entity bullet, float angle){
             Entity entity = commandBuffer.Instantiate(index, bullet);
             commandBuffer.SetComponent(index, entity, 
                 new Translation {Value = new float3(
@@ -78,12 +77,6 @@ public class AutoShootSystem : JobComponentSystem{
                         math.forward(rotation.Value), 
                         angle))
                 });
-
-            // need to make up for delayed spawn time
-            commandBuffer.AddComponent(index, entity,
-                new LostTime{
-                    lostTime = timeLost
-                });
         }
 
         private void Fire(Entity ent, int index, [ReadOnly] ref Translation position, 
@@ -94,8 +87,7 @@ public class AutoShootSystem : JobComponentSystem{
                 case ShotPattern.FAN:
                     if(shoot.count == 1){
                         CreateBullet(index, ref position, ref rotation,
-                            shoot.bullet, timeAlive.time - shoot.period,
-                            shoot.centerAngle);
+                            shoot.bullet, shoot.centerAngle);
                     }
                     else{
                         // space between shots is angle / (count - 1) to have 
@@ -104,8 +96,7 @@ public class AutoShootSystem : JobComponentSystem{
                         float halfAngle = shoot.angle / 2;
                         for(float rad = -halfAngle; rad <= halfAngle; rad += interval){
                             CreateBullet(index, ref position, ref rotation,
-                                shoot.bullet, timeAlive.time - shoot.period,
-                                rad + shoot.centerAngle);
+                                shoot.bullet, rad + shoot.centerAngle);
                         }
                     }
                     break;
@@ -114,8 +105,7 @@ public class AutoShootSystem : JobComponentSystem{
                     interval = (float)(2 * math.PI / shoot.count);
                     for(float rad = 0.0f; rad < 2 * math.PI; rad += interval){
                         CreateBullet(index, ref position, ref rotation,
-                            shoot.bullet, timeAlive.time - shoot.period,
-                            rad + shoot.centerAngle);
+                            shoot.bullet, rad + shoot.centerAngle);
                     }
                     break;
             }
@@ -136,9 +126,6 @@ public class AutoShootSystem : JobComponentSystem{
                     ComponentType.ReadOnly<Translation>(),
                     ComponentType.ReadOnly<Rotation>(),
                     ComponentType.ReadOnly<AutoShoot>()
-                },
-                None = new ComponentType[]{
-                    ComponentType.ReadOnly<InitAutoShoot>()
                 }
             });
     }

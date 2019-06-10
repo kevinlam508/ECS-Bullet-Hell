@@ -29,11 +29,7 @@ public class BulletMovementProxy : MonoBehaviour, IConvertGameObjectToEntity{
 
         // stats exist, prefill
         if(stats != null){
-            data = new BulletMovement { 
-                moveType = stats.moveType,
-                moveSpeed = stats.moveSpeed,
-                rotateSpeed = stats.rotateSpeed
-            };
+            data = stats.ToBulletMovement();
         }
         // no stats, make default
         else{

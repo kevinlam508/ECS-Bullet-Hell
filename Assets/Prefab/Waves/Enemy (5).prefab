@@ -129,11 +129,11 @@ MonoBehaviour:
   startDelay: 0
   period: 0.1
   pattern: 0
-  movementStats: {fileID: 11400000, guid: 84064428b1c4b88448d722ba62dc5f7d, type: 2}
+  movementStats: {fileID: 11400000, guid: 272857b2be1ebc44082aa57a83f2c329, type: 2}
   bullet: {fileID: 316492841909355860, guid: 04139a3bbcc09e0428e8ef555bde8d01, type: 3}
   count: 1
   angle: 20
-  centerAngle: 282
+  centerAngle: 191
 --- !u!114 &5363429096785832997
 MonoBehaviour:
   m_ObjectHideFlags: 0

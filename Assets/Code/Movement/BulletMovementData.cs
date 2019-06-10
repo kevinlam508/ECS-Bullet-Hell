@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 
+using Unity.Mathematics;
+
 [CreateAssetMenu(fileName = "New Bullet Movement", menuName = "BulletMovement")]
 [Serializable]
 public class BulletMovementData : ScriptableObject{
@@ -19,7 +21,7 @@ public class BulletMovementData : ScriptableObject{
     	return new BulletMovement{
     		moveType = moveType,
     		moveSpeed = moveSpeed,
-    		rotateSpeed = rotateSpeed
+    		rotateSpeed = math.radians(rotateSpeed)
     	};
     }
 }
