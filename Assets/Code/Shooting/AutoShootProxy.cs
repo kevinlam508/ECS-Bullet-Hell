@@ -21,6 +21,9 @@ public struct AutoShoot : IComponentData{
     public int count;
     public float angle; // radians
     public float centerAngle; // radians
+
+    // buffer data
+    public int timeIdx;
 }
 
 [RequiresEntityConversion]
@@ -62,7 +65,6 @@ public class AutoShootProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvert
 
     // Referenced prefabs have to be declared so that the conversion system knows about them ahead of time
     public void DeclareReferencedPrefabs(List<GameObject> gameObjects){
-        //bullet.GetComponent<BulletMovementProxy>().stats = movementStats;
         gameObjects.Add(bullet);
     }
 
@@ -97,13 +99,10 @@ public class AutoShootProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvert
             GameObjectConversionSystem conversionSystem){
         Assert.IsTrue(period > 0);
 
-        //bullet.GetComponent<BulletMovementProxy>().stats = movementStats;
-        Entity bulletEnt =  GetBulletEntity(dstManager, conversionSystem);
-        //Entity bulletEnt =  conversionSystem.GetPrimaryEntity(bullet);
-        // Entity bulletEnt = (conversionSystem.HasPrimaryEntity(bullet)) 
-        //         ? conversionSystem.GetPrimaryEntity(bullet)
-        //         : conversionSystem.CreateAdditionalEntity(bullet);
+        // add a TimePassed component
+        int timeIdx = TimePassedUtility.AddDefault(entity, dstManager);
 
+        Entity bulletEnt =  GetBulletEntity(dstManager, conversionSystem);
         AutoShoot shootData = new AutoShoot
         {
             // The referenced prefab will already be converted due to DeclareReferencedPrefabs.
@@ -115,13 +114,10 @@ public class AutoShootProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvert
             pattern = pattern,
             count = count,
             angle = math.radians(angle),
-            centerAngle = math.radians(centerAngle)
+            centerAngle = math.radians(centerAngle),
+            timeIdx = timeIdx
         };
         dstManager.AddComponentData(entity, shootData);
 
-        // dstManager.AddComponentData(entity, new InitAutoShoot{
-        //         baseEnt = bulletEnt,
-        //         movementStats = movementStats.ToBulletMovement()
-        //     });
     }
 }

@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using UnityEngine;
 using Unity.Entities;              // Entity, EntityCommandBuffer
 using Unity.Jobs;                  // IJob*, JobHandle
-using Unity.Transforms;            // Translation, Rotaiton
+using Unity.Transforms;            // Translation, Rotation
 using Unity.Mathematics;           // math
 using Unity.Burst;                 // BurstCompile
 using Unity.Collections;           // ReadOnly
+
+using CustomConstants;             // Constants
 
 /*
  * Notes on AutoShoot parameters
@@ -30,7 +32,7 @@ public class AutoShootSystem : JobComponentSystem{
     // still can't be burst compiled since job adds components using
     //   commandbuffer
     //[BurstCompile]
-	struct AutoShootJob : IJobForEachWithEntity<Translation, Rotation, AutoShoot, TimeAlive>{
+	struct AutoShootJob : IJobForEachWithEntity<Translation, Rotation, AutoShoot>{
 
         // stores creates to do after job finishes
         public EntityCommandBuffer.Concurrent commandBuffer;
@@ -41,29 +43,39 @@ public class AutoShootSystem : JobComponentSystem{
         // height to put bullets on
         public float bulletHeight;
 
+        // buffer of TimePassed
+        [NativeDisableParallelForRestriction]
+        public BufferFromEntity<TimePassed> timePassedBuffers;
+
         // mark args as ReadOnly as much as possible
 		public void Execute(Entity ent, int index, [ReadOnly] ref Translation position, 
-				[ReadOnly] ref Rotation rotation, [ReadOnly] ref AutoShoot shoot, 
-                ref TimeAlive timeAlive){
+				[ReadOnly] ref Rotation rotation, [ReadOnly] ref AutoShoot shoot){
 
-            timeAlive.time += dt;
+            // getting the right TimePassed
+            DynamicBuffer<TimePassed> buffer = timePassedBuffers[ent];
+            TimePassed timePassed = buffer[shoot.timeIdx];
+            timePassed.time += dt;
+
     		// check and update delay
-    		if(shoot.started == 0 && timeAlive.time > shoot.startDelay){
+    		if(shoot.started == 0 && timePassed.time > shoot.startDelay){
     			shoot.started++;
-    			timeAlive.time -= shoot.startDelay;
+    			timePassed.time -= shoot.startDelay;
     		}
 
             // fire until below period
-            while(shoot.started != 0 && timeAlive.time > shoot.period){
+            while(shoot.started != 0 && timePassed.time > shoot.period){
                 // shoot the pattern
                 // buffers commands to do after thread completes
-                Fire(ent, index, ref position, ref rotation, ref shoot, ref timeAlive);
-        		timeAlive.time -= shoot.period;
+                Fire(ent, index, ref position, ref rotation, ref shoot, ref timePassed);
+        		timePassed.time -= shoot.period;
             }
+
+            buffer[shoot.timeIdx] = timePassed;
 		}
 
+        // angleOffset is additional rotation clockwise from facing direction
         private void CreateBullet(int index, [ReadOnly] ref Translation position,
-                [ReadOnly] ref Rotation rotation, Entity bullet, float angle){
+                [ReadOnly] ref Rotation rotation, Entity bullet, float angleOffset){
             Entity entity = commandBuffer.Instantiate(index, bullet);
             commandBuffer.SetComponent(index, entity, 
                 new Translation {Value = new float3(
@@ -75,13 +87,13 @@ public class AutoShootSystem : JobComponentSystem{
                     math.normalize(rotation.Value),
                     quaternion.AxisAngle(
                         math.forward(rotation.Value), 
-                        angle))
+                        angleOffset))
                 });
         }
 
         private void Fire(Entity ent, int index, [ReadOnly] ref Translation position, 
-                [ReadOnly] ref Rotation rotation, [ReadOnly] ref AutoShoot shoot, 
-                ref TimeAlive timeAlive){
+                [ReadOnly] ref Rotation rotation, [ReadOnly] ref AutoShoot shoot,
+                ref TimePassed timePassed){
             float interval;
             switch(shoot.pattern){
                 case ShotPattern.FAN:
@@ -122,7 +134,8 @@ public class AutoShootSystem : JobComponentSystem{
         //    Rotation, and AutoShoot
         // Translation, Rotation, and AutoShoot will have read only access
         shooters = GetEntityQuery(new EntityQueryDesc{
-                All = new ComponentType[]{typeof(TimeAlive), 
+                All = new ComponentType[]{
+                    typeof(TimePassed), 
                     ComponentType.ReadOnly<Translation>(),
                     ComponentType.ReadOnly<Rotation>(),
                     ComponentType.ReadOnly<AutoShoot>()
@@ -138,9 +151,9 @@ public class AutoShootSystem : JobComponentSystem{
         JobHandle jobHandle = new AutoShootJob{
             commandBuffer = buffer,
         	dt = Time.deltaTime,
-            bulletHeight = CustomConstants.Constants.BULLET_HEIGHT
+            bulletHeight = Constants.ENEMY_BULLET_HEIGHT,
+            timePassedBuffers = GetBufferFromEntity<TimePassed>(false)
         }.Schedule(shooters, handle);
-
 
         // tells buffer systems to wait for the job to finish, then
         //   it will perform the commands buffered

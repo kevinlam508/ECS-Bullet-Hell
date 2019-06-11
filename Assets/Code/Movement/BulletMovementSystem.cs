@@ -3,7 +3,7 @@ using Unity.Entities;     // JobComponentSystem
 using Unity.Jobs;         // IJob*
 using Unity.Transforms;   // Traslation, Rotation
 using Unity.Mathematics;  // math
-using Unity.Burst;        // BurstCompole
+using Unity.Burst;        // BurstCompile
 using Unity.Collections;  // Native*
 using Unity.Physics;      // physics things
 
@@ -70,6 +70,7 @@ public class BulletMovementSystem : JobComponentSystem{
 	}
 
 	// only operators on the listed components
+	[BurstCompile]
 	struct SetPhysVelJob : IJobForEach<BulletMovement, PhysicsVelocity, Translation, Rotation>{
 
 		public MoveUtility util;

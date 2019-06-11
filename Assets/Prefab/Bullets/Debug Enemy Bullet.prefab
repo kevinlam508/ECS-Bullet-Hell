@@ -15,11 +15,11 @@ GameObject:
   - component: {fileID: 6595548200710288575}
   - component: {fileID: 349105628640692434}
   - component: {fileID: 8280808965446441045}
-  - component: {fileID: 3570739785722954138}
   - component: {fileID: 5932053989823418205}
   - component: {fileID: 776439099722791080}
+  - component: {fileID: 6091156321109787651}
   m_Layer: 0
-  m_Name: Bullet
+  m_Name: DebugBullet
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -218,18 +218,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ConversionMode: 0
---- !u!114 &3570739785722954138
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 316492841909355860}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3f39cbd3aaebca045a5846353ed4ba14, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &5932053989823418205
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -252,6 +240,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b56a70fa6e1965249a8094a728b799ed, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &6091156321109787651
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 316492841909355860}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 97162fd4c37da704694df9f4bfc2f619, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!1 &3635137537920427483
