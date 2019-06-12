@@ -68,11 +68,11 @@ public class PlayerShootSystem : JobComponentSystem
 			timePassed.time += dt;
 
             // fire until below period
-            while(shooting && timePassed.time > shoot.shotCooldown){
+            if(shooting && timePassed.time > shoot.shotCooldown){
                 // shoot the pattern
                 // buffers commands to do after thread completes
                 CreateBullet(index, ref pos, ref rotation, shoot.bullet, 0);
-        		timePassed.time -= shoot.shotCooldown;
+        		timePassed.time = 0;
             }
 
             buffer[shoot.timeIdx] = timePassed;

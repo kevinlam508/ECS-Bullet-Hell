@@ -10,6 +10,7 @@ using Unity.Burst;                // BurstCompile
 
 
 // cull bottom of the list as it's spawned if performance is an issue
+[AlwaysUpdateSystem]
 public class WaveSpawningSystem : JobComponentSystem
 {
 
@@ -43,12 +44,23 @@ public class WaveSpawningSystem : JobComponentSystem
 		}
 	}
 
+	// spawning waves
 	private NativeList<WaveData> waves;
 	private float totalTime = 0;
 	private EndSimulationEntityCommandBufferSystem commandBufferSystem;
 
+	// ending a level
+	private int finalWaveIdx = 0;
+	private EntityQuery enemies;
+
     protected override void OnCreateManager(){
         commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+
+        enemies = GetEntityQuery(new EntityQueryDesc{
+                All = new ComponentType[]{
+                    ComponentType.ReadOnly<Enemy>()
+                }
+            });
     }
 
 	// converts waves from GameObject to Entity version
@@ -69,8 +81,11 @@ public class WaveSpawningSystem : JobComponentSystem
 				});
 		}
 
-		// sort by spawn times
-		NativeSortExtension.Sort<WaveData>(waves);
+		for(int i = 0; i < waves.Length; ++i){
+			if(waves[i].spawnTime > waves[finalWaveIdx].spawnTime){
+				finalWaveIdx = i;
+			}
+		}
 	}
 
 	public void ClearWaves(){
@@ -83,7 +98,7 @@ public class WaveSpawningSystem : JobComponentSystem
 
     protected override JobHandle OnUpdate(JobHandle dependencies){
     	totalTime += Time.deltaTime;
-    	if(waves.IsCreated && waves.Length > 0){
+    	if(waves.IsCreated && waves.Length > 0 && !waves[finalWaveIdx].spawned){
     		dependencies = new WaveSpawnJob{
     				waves = waves,
     				commandBuffer = commandBufferSystem.CreateCommandBuffer().ToConcurrent(),
@@ -92,6 +107,9 @@ public class WaveSpawningSystem : JobComponentSystem
 
 	        // tells buffer systems to wait for the job to finish
 	        commandBufferSystem.AddJobHandleForProducer(dependencies);
+    	}
+    	else if(waves[finalWaveIdx].spawned && enemies.CalculateLength() == 0){
+    		SceneSwapper.instance.ExitScene();
     	}
     	return dependencies;
     }

@@ -129,11 +129,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   startDelay: 0
-  period: 0.1
+  period: 0.5
   pattern: 0
   movementStats: {fileID: 11400000, guid: 272857b2be1ebc44082aa57a83f2c329, type: 2}
   bullet: {fileID: 316492841909355860, guid: 04139a3bbcc09e0428e8ef555bde8d01, type: 3}
-  count: 1
+  count: 5
   angle: 20
   centerAngle: 191
 --- !u!114 &5363429096785832997

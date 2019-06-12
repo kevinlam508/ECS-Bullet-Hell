@@ -25,7 +25,6 @@ using CustomConstants;             // Constants
  *     AROUND: ignored
  */
 
-[UpdateBefore(typeof(BulletMovementSystem))]
 public class AutoShootSystem : JobComponentSystem{
 	public enum ShotPattern : int {FAN, AROUND}
 
