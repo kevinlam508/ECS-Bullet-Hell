@@ -42,7 +42,7 @@ public class AutoShootSystem : JobComponentSystem{
         // height to put bullets on
         public float bulletHeight;
 
-        // buffer of TimePassed
+        // buffers of TimePassed for all entities
         [NativeDisableParallelForRestriction]
         public BufferFromEntity<TimePassed> timePassedBuffers;
 

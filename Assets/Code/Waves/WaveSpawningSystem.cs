@@ -98,18 +98,20 @@ public class WaveSpawningSystem : JobComponentSystem
 
     protected override JobHandle OnUpdate(JobHandle dependencies){
     	totalTime += Time.deltaTime;
-    	if(waves.IsCreated && waves.Length > 0 && !waves[finalWaveIdx].spawned){
-    		dependencies = new WaveSpawnJob{
-    				waves = waves,
-    				commandBuffer = commandBufferSystem.CreateCommandBuffer().ToConcurrent(),
-    				time = totalTime
-    			}.Schedule(waves.Length, 10, dependencies);
+    	if(waves.IsCreated && waves.Length > 0){
+    		if(!waves[finalWaveIdx].spawned){
+	    		dependencies = new WaveSpawnJob{
+	    				waves = waves,
+	    				commandBuffer = commandBufferSystem.CreateCommandBuffer().ToConcurrent(),
+	    				time = totalTime
+	    			}.Schedule(waves.Length, 10, dependencies);
 
-	        // tells buffer systems to wait for the job to finish
-	        commandBufferSystem.AddJobHandleForProducer(dependencies);
-    	}
-    	else if(waves[finalWaveIdx].spawned && enemies.CalculateLength() == 0){
-    		SceneSwapper.instance.ExitScene();
+		        // tells buffer systems to wait for the job to finish
+		        commandBufferSystem.AddJobHandleForProducer(dependencies);
+		    }
+	    	else if(waves[finalWaveIdx].spawned && enemies.CalculateLength() == 0){
+	    		SceneSwapper.instance.ExitScene();
+	    	}
     	}
     	return dependencies;
     }
