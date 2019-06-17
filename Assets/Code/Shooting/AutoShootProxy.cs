@@ -31,9 +31,9 @@ public class AutoShootProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvert
 {	
 
     // init cache and add to scene leaving events
-    public static Dictionary<GameObject, Dictionary<BulletMovementData, Entity>> prefabCache;
+    public static Dictionary<GameObject, Dictionary<BulletMovementData, Dictionary<BulletDamageData, Entity>>> prefabCache;
     static AutoShootProxy(){
-        prefabCache = new Dictionary<GameObject, Dictionary<BulletMovementData, Entity>>();
+        prefabCache = new Dictionary<GameObject, Dictionary<BulletMovementData, Dictionary<BulletDamageData, Entity>>>();
         SceneSwapper.OnSceneExit += prefabCache.Clear;
     }
 
@@ -49,6 +49,9 @@ public class AutoShootProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvert
 
     [Tooltip("Stats on the bullet's movement")]
     public BulletMovementData movementStats;
+
+    [Tooltip("Stats on the bullet's damage")]
+    public BulletDamageData damageStats;
 
     [Tooltip("Base prefab of the bullet")]
     public GameObject bullet;
@@ -73,22 +76,27 @@ public class AutoShootProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvert
         Entity ent = Entity.Null;
 
         // already in cache, just get it
-        if(prefabCache.ContainsKey(bullet) && prefabCache[bullet].ContainsKey(movementStats)){
-            ent = prefabCache[bullet][movementStats];
+        if(prefabCache.ContainsKey(bullet) && prefabCache[bullet].ContainsKey(movementStats) 
+                && prefabCache[bullet][movementStats].ContainsKey(damageStats)){
+            ent = prefabCache[bullet][movementStats][damageStats];
         }
         // not in cache, make it and add to cache
         else{
             ent = (conversionSystem.HasPrimaryEntity(bullet)) 
                 ? conversionSystem.GetPrimaryEntity(bullet)
                 : conversionSystem.CreateAdditionalEntity(bullet);
-            BulletMovement bm = movementStats.ToBulletMovement();
-            dstManager.SetComponentData(ent, bm);
+            dstManager.SetComponentData(ent, movementStats.ToBulletMovement());
+            dstManager.SetComponentData(ent, damageStats.ToBulletDamage());
             dstManager.AddComponentData(ent, new Prefab());
 
+
             if(!prefabCache.ContainsKey(bullet)){
-                prefabCache.Add(bullet, new Dictionary<BulletMovementData, Entity>());
+                prefabCache.Add(bullet, new Dictionary<BulletMovementData, Dictionary<BulletDamageData, Entity>>());
             }
-            prefabCache[bullet].Add(movementStats, ent);
+            if(!prefabCache[bullet].ContainsKey(movementStats)){
+                prefabCache[bullet].Add(movementStats, new Dictionary<BulletDamageData, Entity>());
+            }
+            prefabCache[bullet][movementStats].Add(damageStats, ent);
         }
 
         return ent;

@@ -256,13 +256,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   waves:
   - spawnTime: 1
-    wavePrefab: {fileID: 2109029993654347751, guid: cee8225c92dbbc34e9a102e62020a318,
+    wavePrefab: {fileID: 7011976019305173451, guid: 305268ddc6ebc134a8f0d28610b4a4ed,
       type: 3}
   - spawnTime: 1
-    wavePrefab: {fileID: 8069628442826290381, guid: e8266aa39822de44598e66dfa9218da1,
+    wavePrefab: {fileID: 1789677442870042958, guid: 08bd87162580adf4ab383d27cb49c2c2,
       type: 3}
   - spawnTime: 1
-    wavePrefab: {fileID: 5363429096785832996, guid: 9466ce61352f505458fe480f2c621c9c,
+    wavePrefab: {fileID: 6840904239769103612, guid: 3e6670caa361ef04b9c6f0026723135b,
       type: 3}
 --- !u!4 &415399007
 Transform:

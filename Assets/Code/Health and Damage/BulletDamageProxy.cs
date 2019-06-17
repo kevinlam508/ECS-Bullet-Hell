@@ -5,18 +5,28 @@ using Unity.Entities;               // IComponentData, IConvertGameObjectToEntit
 
 public struct BulletDamage : IComponentData{
     public int damage;
+    public int pierceCount;
 }
 
 [UnityEngine.DisallowMultipleComponent]
 [RequiresEntityConversion]
 public class BulletDamageProxy : MonoBehaviour, IConvertGameObjectToEntity{
     
-    public int damage = 1;
+    public BulletDamageData damageStats = null;
 
     // copies monobehavior data into component data
     public void Convert(Entity entity, EntityManager dstManager, 
             GameObjectConversionSystem conversionSystem){
 
-        dstManager.AddComponentData(entity, new BulletDamage{ damage = damage });
+    	// default damage
+    	if(damageStats == null){
+        	dstManager.AddComponentData(entity, new BulletDamage{ 
+        			damage = 1,
+        			pierceCount = 0
+        		});
+        }
+        else{
+        	dstManager.AddComponentData(entity, damageStats.ToBulletDamage());
+        }
     }
 }

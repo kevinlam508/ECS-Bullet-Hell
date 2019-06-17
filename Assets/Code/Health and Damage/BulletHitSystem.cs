@@ -15,11 +15,11 @@ using System.Collections;
 [UpdateAfter(typeof(PlayerMovementSystem))]
 [UpdateAfter(typeof(BuildPhysicsWorld))]
 [UpdateBefore(typeof(StepPhysicsWorld))]
-public class CollisionAssignmentSystem : JobComponentSystem
+public class BulletHitSystem : JobComponentSystem
 {
     // abstracted incase more data needed later
     struct CollisionInfo{
-        public int bodyIdx;
+        public Entity otherEnt;
         public float3 contactPos;
     }
 
@@ -30,7 +30,7 @@ public class CollisionAssignmentSystem : JobComponentSystem
         [ReadOnly] public CollisionWorld world;
 
         // map of entities to hits for process hit job
-        [WriteOnly] public NativeMultiHashMap<int, CollisionInfo>.Concurrent collisions;
+        [WriteOnly] public NativeMultiHashMap<Entity, CollisionInfo>.Concurrent collisions;
 
         public uint targetMask;
         public uint bulletMask;
@@ -61,8 +61,9 @@ public class CollisionAssignmentSystem : JobComponentSystem
                 }
 
                 if(targetIdx >= 0 && bulletIdx >= 0){
-                    collisions.Add(targetIdx, new CollisionInfo{
-                            bodyIdx = bulletIdx,
+                    collisions.Add(world.Bodies[targetIdx].Entity, 
+                        new CollisionInfo{
+                            otherEnt = world.Bodies[bulletIdx].Entity,
                             contactPos = contactPoint.Position
                         });
                 }
@@ -71,7 +72,7 @@ public class CollisionAssignmentSystem : JobComponentSystem
     }
 
     //[BurstCompile]
-    struct ProcessPlayerToBulletHits : IJobNativeMultiHashMapVisitKeyValue<int, CollisionInfo>{
+    struct ProcessPlayerToBulletHits : IJobNativeMultiHashMapVisitKeyValue<Entity, CollisionInfo>{
 
         // store commands to be processed outside of jobs
         [WriteOnly] public EntityCommandBuffer.Concurrent commandBuffer;
@@ -80,14 +81,10 @@ public class CollisionAssignmentSystem : JobComponentSystem
         [ReadOnly] public CollisionWorld world;
         public ParticleRequestSystem.ParticleRequestUtility partUtil;
 
-        public void ExecuteNext(int playerBodyIdx, CollisionInfo data){
-            // process the collision
-
-            // get the entity of the other body
-            RigidBody otherBody = world.Bodies[data.bodyIdx];
-            Entity other = otherBody.Entity;
+        public void ExecuteNext(Entity player, CollisionInfo data){
 
             // delete other entity for now
+            Entity other = data.otherEnt;
             commandBuffer.DestroyEntity(other.Index, other);
             partUtil.CreateRequest(other.Index, commandBuffer,
                 data.contactPos, ParticleRequestSystem.ParticleType.HitSpark);
@@ -95,31 +92,56 @@ public class CollisionAssignmentSystem : JobComponentSystem
 
     }
 
-    struct ProcessEnemyToBulletHits : IJobNativeMultiHashMapVisitKeyValue<int, CollisionInfo>{
+    struct ProcessEnemyToBulletHits : IJobForEachWithEntity<Health, Translation>{
 
-        // store commands to be processed outside of jobs
         [WriteOnly] public EntityCommandBuffer.Concurrent commandBuffer;
+        public ParticleRequestSystem.ParticleRequestUtility partUtil;
 
-        [ReadOnly] public CollisionWorld world;
+        [ReadOnly] public NativeMultiHashMap<Entity, CollisionInfo> collisions;
+        [ReadOnly] public NativeHashMap<Entity, BulletDamage> damageMap;
 
-        public void ExecuteNext(int enemyBodyIdx, CollisionInfo data){
+        public void Execute(Entity ent, int idx, ref Health health, [ReadOnly] ref Translation pos){
 
-            // get the entity of the enemy
-            RigidBody enemyBody = world.Bodies[enemyBodyIdx];
-            Entity enemy = enemyBody.Entity;
+            // run through all the collisions for this entity
+            int totalDamage = 0;
+            NativeMultiHashMapIterator<Entity> iter;
+            CollisionInfo info;
+            if(collisions.TryGetFirstValue(ent, out info, out iter)){
+                do{
 
-            // get the entity of the other body
-            RigidBody otherBody = world.Bodies[data.bodyIdx];
-            Entity other = otherBody.Entity;
+                    BulletDamage damageInfo = damageMap[info.otherEnt];
+                    totalDamage += damageInfo.damage;
+                    partUtil.CreateRequest(idx, commandBuffer, info.contactPos, 
+                        ParticleRequestSystem.ParticleType.HitSpark);
 
-            // set marker on the enemy
-            DynamicBuffer<BulletHit> buffer = commandBuffer.SetBuffer<BulletHit>(enemy.Index, enemy);
-            buffer.Add(new BulletHit{
-                    bullet = other,
-                    hitPos = data.contactPos
-                });
+                    // handle events to happen when bullet hits
+                    if(damageInfo.pierceCount > 0){
+                        --damageInfo.pierceCount;
+                        commandBuffer.SetComponent(idx, info.otherEnt, damageInfo);
+                    }
+                    else{
+                        commandBuffer.DestroyEntity(idx, info.otherEnt);
+                    }
+                }while(collisions.TryGetNextValue(out info, ref iter));
+
+                // take damage and die
+                health.health -= totalDamage;
+                if(health.health <= 0){
+                    commandBuffer.DestroyEntity(idx, ent);
+                    partUtil.CreateRequest(idx, commandBuffer, pos.Value, 
+                        ParticleRequestSystem.ParticleType.Explosion);
+                }
+            }
+
         }
+    }
 
+    struct CopyBulletDamageJob : IJobForEachWithEntity<BulletDamage>{
+        [WriteOnly] public NativeHashMap<Entity, BulletDamage>.Concurrent damageMap;
+
+        public void Execute(Entity ent, int idx, [ReadOnly] ref BulletDamage damage){
+            damageMap.TryAdd(ent, damage);
+        }
     }
 
     // other systems
@@ -137,8 +159,10 @@ public class CollisionAssignmentSystem : JobComponentSystem
     EntityQuery enemyBulletGroup;
 
     // generalizing single player hit in case of multiplayer
-    NativeMultiHashMap<int, CollisionInfo> playerToBulletCollisions;
-    NativeMultiHashMap<int, CollisionInfo> enemyToBulletCollisions;
+    NativeMultiHashMap<Entity, CollisionInfo> playerToBulletCollisions;
+    NativeMultiHashMap<Entity, CollisionInfo> enemyToBulletCollisions;
+
+    NativeHashMap<Entity, BulletDamage> playerBulletDamageMap;
 
     // physics layer masks
     uint playerMask;
@@ -161,17 +185,21 @@ public class CollisionAssignmentSystem : JobComponentSystem
             });
         enemyGroup = GetEntityQuery(new EntityQueryDesc{
                 All = new ComponentType[]{
-                    ComponentType.ReadOnly<Enemy>()
+                    ComponentType.ReadOnly<Enemy>(),
+                    typeof(Health),
+                    ComponentType.ReadOnly<Translation>()
                 }
             });
         playerBulletGroup = GetEntityQuery(new EntityQueryDesc{
                 All = new ComponentType[]{
-                    ComponentType.ReadOnly<PlayerBullet>()
+                    ComponentType.ReadOnly<PlayerBullet>(),
+                    ComponentType.ReadOnly<BulletDamage>()
                 }
             });
         enemyBulletGroup = GetEntityQuery(new EntityQueryDesc{
                 All = new ComponentType[]{
-                    ComponentType.ReadOnly<EnemyBullet>()
+                    ComponentType.ReadOnly<EnemyBullet>(),
+                    ComponentType.ReadOnly<BulletDamage>()
                 }
             });
 
@@ -187,6 +215,9 @@ public class CollisionAssignmentSystem : JobComponentSystem
         }
         if(enemyToBulletCollisions.IsCreated){
             enemyToBulletCollisions.Dispose();
+        }
+        if(playerBulletDamageMap.IsCreated){
+            playerBulletDamageMap.Dispose();
         }
     }
 
@@ -220,7 +251,7 @@ public class CollisionAssignmentSystem : JobComponentSystem
             JobHandle deps){
 
         // first arg is max capacity, setting as max possible collision pairs
-        playerToBulletCollisions = new NativeMultiHashMap<int, CollisionInfo>(
+        playerToBulletCollisions = new NativeMultiHashMap<Entity, CollisionInfo>(
             enemyBulletGroup.CalculateLength() * playerGroup.CalculateLength(), 
             Allocator.TempJob);
         
@@ -245,10 +276,17 @@ public class CollisionAssignmentSystem : JobComponentSystem
             JobHandle deps){
 
         // first arg is max capacity, setting as max possible collision pairs
-        enemyToBulletCollisions = new NativeMultiHashMap<int, CollisionInfo>(
+        enemyToBulletCollisions = new NativeMultiHashMap<Entity, CollisionInfo>(
             playerBulletGroup.CalculateLength() * enemyGroup.CalculateLength(), 
             Allocator.TempJob);
+        playerBulletDamageMap = new NativeHashMap<Entity, BulletDamage>(
+            playerBulletGroup.CalculateLength(),
+            Allocator.TempJob);
         
+        JobHandle copyDamageJob = new CopyBulletDamageJob{
+            damageMap = playerBulletDamageMap.ToConcurrent()
+        }.Schedule(playerBulletGroup, deps);
+
         JobHandle collectJob = new CollectHitsJob{
             world = buildPhysWorld.PhysicsWorld.CollisionWorld,
             collisions = enemyToBulletCollisions.ToConcurrent(),
@@ -258,8 +296,10 @@ public class CollisionAssignmentSystem : JobComponentSystem
 
         JobHandle processJob = new ProcessEnemyToBulletHits{
             commandBuffer = commandBufferSystem.CreateCommandBuffer().ToConcurrent(),
-            world = buildPhysWorld.PhysicsWorld.CollisionWorld
-        }.Schedule(enemyToBulletCollisions, 10, collectJob);
+            partUtil = partReqSystem.Util,
+            collisions = enemyToBulletCollisions,
+            damageMap = playerBulletDamageMap
+        }.Schedule(enemyGroup, JobHandle.CombineDependencies(copyDamageJob, collectJob));
 
         commandBufferSystem.AddJobHandleForProducer(processJob);
         return processJob;

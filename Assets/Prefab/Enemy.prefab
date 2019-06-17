@@ -17,7 +17,6 @@ GameObject:
   - component: {fileID: 5971101943760312500}
   - component: {fileID: 6107671488463159953}
   - component: {fileID: 2374736837970163665}
-  - component: {fileID: 7277995536634355847}
   m_Layer: 0
   m_Name: Enemy
   m_TagString: Untagged
@@ -56,6 +55,7 @@ MonoBehaviour:
   period: 0.1
   pattern: 0
   movementStats: {fileID: 11400000, guid: 5c6fcaf10cd38f147b134a282c8351fe, type: 2}
+  damageStats: {fileID: 11400000, guid: 07c23f40c3544be43a97ea011ff6b7d8, type: 2}
   bullet: {fileID: 316492841909355860, guid: 04139a3bbcc09e0428e8ef555bde8d01, type: 3}
   count: 1
   angle: 20
@@ -250,18 +250,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   maxHealth: 10
---- !u!114 &7277995536634355847
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4485524592475101398}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 581d0e2562a3c5f4a88b094a8c6177d3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &4848261594203585406
 GameObject:
   m_ObjectHideFlags: 0
