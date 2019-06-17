@@ -38,4 +38,13 @@ public class ParticleSystemBundle : MonoBehaviour
             system.Emit(param, Random.Range(burst.minCount, burst.maxCount + 1));
         }
     }
+
+    IEnumerator Test(){
+
+        while(true){
+            transform.RotateAround(transform.position, Vector3.forward, 30f);
+            Play();
+            yield return new WaitForSeconds(.1f);
+        }
+    }
 }

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.Entities;               // IComponentData
+using Unity.Mathematics;			// quaternion
 
 public struct ParticleRequest : IComponentData{
 	public ParticleRequestSystem.ParticleType type;
@@ -9,7 +10,7 @@ public struct ParticleRequest : IComponentData{
 
 public class ParticleRequestProxy : MonoBehaviour, IConvertGameObjectToEntity{
 
-	ParticleRequestSystem.ParticleType type;
+	ParticleRequestSystem.ParticleType type = ParticleRequestSystem.ParticleType.Explosion;
 
 	public void Convert(Entity entity, EntityManager dstManager, 
             GameObjectConversionSystem conversionSystem){

@@ -11,13 +11,11 @@ using Unity.Burst;
 
 using System.Collections;
 
-using CollisionEvent = Unity.Physics.LowLevel.CollisionEvent;
-
 [UpdateAfter(typeof(BulletMovementSystem))]
 [UpdateAfter(typeof(PlayerMovementSystem))]
 [UpdateAfter(typeof(BuildPhysicsWorld))]
 [UpdateBefore(typeof(StepPhysicsWorld))]
-public class BulletHitSystem : JobComponentSystem
+public class CollisionAssignmentSystem : JobComponentSystem
 {
     // abstracted incase more data needed later
     struct CollisionInfo{
@@ -36,10 +34,6 @@ public class BulletHitSystem : JobComponentSystem
 
         public uint targetMask;
         public uint bulletMask;
-
-        // should have never been more than that in collisions anyways
-        public int count;
-        public int cap;
 
         public unsafe void Execute(ref ModifiableContactHeader contactHeader, 
                 ref ModifiableContactPoint contactPoint){
@@ -66,12 +60,11 @@ public class BulletHitSystem : JobComponentSystem
                     bulletIdx = idxA;
                 }
 
-                if(count < cap && targetIdx >= 0 && bulletIdx >= 0){
+                if(targetIdx >= 0 && bulletIdx >= 0){
                     collisions.Add(targetIdx, new CollisionInfo{
                             bodyIdx = bulletIdx,
                             contactPos = contactPoint.Position
                         });
-                    ++count;
                 }
             }
         }
@@ -108,12 +101,10 @@ public class BulletHitSystem : JobComponentSystem
         [WriteOnly] public EntityCommandBuffer.Concurrent commandBuffer;
 
         [ReadOnly] public CollisionWorld world;
-        public ParticleRequestSystem.ParticleRequestUtility partUtil;
 
         public void ExecuteNext(int enemyBodyIdx, CollisionInfo data){
-            // process the collision
 
-            // ge the entity of the enemy
+            // get the entity of the enemy
             RigidBody enemyBody = world.Bodies[enemyBodyIdx];
             Entity enemy = enemyBody.Entity;
 
@@ -121,16 +112,12 @@ public class BulletHitSystem : JobComponentSystem
             RigidBody otherBody = world.Bodies[data.bodyIdx];
             Entity other = otherBody.Entity;
 
-            // delete other entity for now
-            commandBuffer.DestroyEntity(other.Index, other);
-            partUtil.CreateRequest(other.Index, commandBuffer,
-                data.contactPos, ParticleRequestSystem.ParticleType.HitSpark);
-
-            // killing enemy
-            commandBuffer.DestroyEntity(enemy.Index, enemy);
-            partUtil.CreateRequest(other.Index, commandBuffer, 
-                enemyBody.WorldFromBody.pos,
-                ParticleRequestSystem.ParticleType.Explosion);
+            // set marker on the enemy
+            DynamicBuffer<BulletHit> buffer = commandBuffer.SetBuffer<BulletHit>(enemy.Index, enemy);
+            buffer.Add(new BulletHit{
+                    bullet = other,
+                    hitPos = data.contactPos
+                });
         }
 
     }
@@ -241,9 +228,7 @@ public class BulletHitSystem : JobComponentSystem
             world = buildPhysWorld.PhysicsWorld.CollisionWorld,
             collisions = playerToBulletCollisions.ToConcurrent(),
             targetMask = playerMask,
-            bulletMask = enemyBulletMask,
-            count = 0,
-            cap = playerToBulletCollisions.Capacity
+            bulletMask = enemyBulletMask
         }.Schedule(sim, ref world, deps);
 
         JobHandle processJob = new ProcessPlayerToBulletHits{
@@ -268,15 +253,12 @@ public class BulletHitSystem : JobComponentSystem
             world = buildPhysWorld.PhysicsWorld.CollisionWorld,
             collisions = enemyToBulletCollisions.ToConcurrent(),
             targetMask = enemyMask,
-            bulletMask = playerBulletMask,
-            count = 0,
-            cap = enemyToBulletCollisions.Capacity
+            bulletMask = playerBulletMask
         }.Schedule(sim, ref world, deps);
 
         JobHandle processJob = new ProcessEnemyToBulletHits{
             commandBuffer = commandBufferSystem.CreateCommandBuffer().ToConcurrent(),
-            world = buildPhysWorld.PhysicsWorld.CollisionWorld,
-            partUtil = partReqSystem.Util
+            world = buildPhysWorld.PhysicsWorld.CollisionWorld
         }.Schedule(enemyToBulletCollisions, 10, collectJob);
 
         commandBufferSystem.AddJobHandleForProducer(processJob);

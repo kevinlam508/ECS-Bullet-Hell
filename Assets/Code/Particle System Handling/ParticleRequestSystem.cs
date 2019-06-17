@@ -86,7 +86,7 @@ public class ParticleRequestSystem : ComponentSystem
         }
     }
 
-    ParticleSystemBundle GetParticle(ParticleType p){
+    private ParticleSystemBundle GetParticle(ParticleType p){
 
         ParticleSystemBundle res = particleSystems[(int)p];
         if(res == null){

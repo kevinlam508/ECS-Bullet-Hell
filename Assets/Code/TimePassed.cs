@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using System;
-using Unity.Entities;
+using Unity.Entities;               // IBufferElementData
 
 /*
  *  Made this a buffer element so that there can be multiple versions of this
