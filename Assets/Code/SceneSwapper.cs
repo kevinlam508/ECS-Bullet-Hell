@@ -50,8 +50,10 @@ public class SceneSwapper : MonoBehaviour
 
         // delete all existing entites
         NativeArray<Entity> ents = entManager.GetAllEntities();
+        EntityCommandBuffer buffer = World.Active.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>()
+            .CreateCommandBuffer();
         foreach(Entity ent in ents){
-            entManager.DestroyEntity(ent);
+            buffer.DestroyEntity(ent);
         }
         ents.Dispose();
 

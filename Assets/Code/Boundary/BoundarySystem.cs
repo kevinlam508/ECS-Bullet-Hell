@@ -13,24 +13,53 @@ using Unity.Collections;
 [UpdateAfter(typeof(PlayerMovementSystem))]
 public class BoundarySystem : JobComponentSystem{
 
+	public enum InteractionType{
+		KeepIn,
+		DeleteOutside
+	};
+
+	struct BoundUtil{
+		public float top, bottom, left, right;
+
+		public bool IsAboveTop(float val){
+			return val > top;
+		}
+
+		public bool IsBelowBottom(float val){
+			return val < bottom;
+		}
+
+		public bool IsBelowLeft(float val){
+			return val < left;
+		}
+
+		public bool IsAboveRight(float val){
+			return val > right;
+		}
+
+		public bool IsOutOfBounds(float x, float y){
+			return IsAboveRight(x) || IsBelowLeft(x) || IsAboveTop(y)
+				|| IsBelowBottom(y);
+		}
+	}
 
     [BurstCompile]
 	struct KeepInBoundJob : IJobForEach<Translation>{
 
-		public float top, bottom, left, right;
+		public BoundUtil util;
 
 		public void Execute(ref Translation trans){
-			if(trans.Value.y > top){
-				trans.Value.y = top;
+			if(util.IsAboveTop(trans.Value.y)){
+				trans.Value.y = util.top;
 			}
-			if(trans.Value.y < bottom){
-				trans.Value.y = bottom;
+			if(util.IsBelowBottom(trans.Value.y)){
+				trans.Value.y = util.bottom;
 			}
-			if(trans.Value.x > right){
-				trans.Value.x = right;
+			if(util.IsAboveRight(trans.Value.x)){
+				trans.Value.x = util.right;
 			}
-			if(trans.Value.x < left){
-				trans.Value.x = left;
+			if(util.IsBelowLeft(trans.Value.x)){
+				trans.Value.x = util.left;
 			}
 		}
 	}
@@ -41,22 +70,43 @@ public class BoundarySystem : JobComponentSystem{
 
         // stores creates to do after job finishes
         public EntityCommandBuffer.Concurrent commandBuffer;
-
-		public float top, bottom, left, right;
+		public BoundUtil util;
 
 		public void Execute(Entity ent, int idx, [ReadOnly] ref Translation trans){
-			if(trans.Value.y > top || trans.Value.y < bottom || trans.Value.x > right 
-					|| trans.Value.x < left){
+			if(util.IsOutOfBounds(trans.Value.x, trans.Value.y)){
 				commandBuffer.DestroyEntity(idx, ent);
+			}
+		}
+	}
+
+	struct ConvertOnEntryJob : IJobForEachWithEntity<Translation, BoundMarkerConvert>{
+		public EntityCommandBuffer.Concurrent commandBuffer;
+		public BoundUtil util;
+
+		public void Execute(Entity ent, int idx, [ReadOnly] ref Translation trans,
+				[ReadOnly] ref BoundMarkerConvert convert){
+			if(!util.IsOutOfBounds(trans.Value.x, trans.Value.y)){
+				commandBuffer.RemoveComponent(idx, ent, typeof(BoundMarkerConvert));
+
+				// add new marker
+				switch(convert.newMarker){
+					case InteractionType.KeepIn:
+						commandBuffer.AddComponent(idx, ent, new BoundMarkerIn());
+						break;
+					case InteractionType.DeleteOutside:
+						commandBuffer.AddComponent(idx, ent, new BoundMarkerDelete());
+						break;
+				}
 			}
 		}
 	}
 
     private EntityQuery keepInBound;
     private EntityQuery deleteOnBound;
+    private EntityQuery convertInBound;
     private EntityQuery edgeMarkers;
 
-    private float top, bottom, left, right;
+    private BoundUtil util;
 
     private EndSimulationEntityCommandBufferSystem commandBufferSystem;
 
@@ -79,6 +129,14 @@ public class BoundarySystem : JobComponentSystem{
                 }
             });
 
+        // will have all entities with Translation and BoundMarkerConvert
+        convertInBound = GetEntityQuery(new EntityQueryDesc{
+                All = new ComponentType[]{
+                	ComponentType.ReadOnly<Translation>(), 
+                    ComponentType.ReadOnly<BoundMarkerConvert>()
+                }
+            });
+
         // will have all entities with Translation and BoundMarkerEdge
         edgeMarkers = GetEntityQuery(new EntityQueryDesc{
                 All = new ComponentType[]{
@@ -92,6 +150,7 @@ public class BoundarySystem : JobComponentSystem{
     private void InitBounds(){
 		NativeArray<Translation> bounds = edgeMarkers
 			.ToComponentDataArray<Translation>(Allocator.TempJob);
+		float top, bottom, right, left;
 		top = right = float.MinValue;
 		bottom = left = float.MaxValue;
 		for(int i = 0; i < bounds.Length; ++i){
@@ -109,30 +168,36 @@ public class BoundarySystem : JobComponentSystem{
 			}
 		}
 		bounds.Dispose();
+
+		util = new BoundUtil{
+				top = top,
+				bottom = bottom,
+				left = left,
+				right = right
+			};
     }
 
 	protected override JobHandle OnUpdate(JobHandle handle){
         InitBounds();
 
 		JobHandle inBoundJob = new KeepInBoundJob(){
-			top = this.top,
-			bottom = this.bottom,
-			left = this.left,
-			right = this.right
+			util = util
 		}.Schedule(keepInBound, handle);
 
+		// both use the same buffer, so one needs to finish before the other starts
+		EntityCommandBuffer.Concurrent buffer = commandBufferSystem.CreateCommandBuffer().ToConcurrent();
 		JobHandle deleteJob = new DeleteOutOfBoundJob(){
-			commandBuffer = commandBufferSystem.CreateCommandBuffer().ToConcurrent(),
-			top = this.top,
-			bottom = this.bottom,
-			left = this.left,
-			right = this.right
+			commandBuffer = buffer,
+			util = util
 		}.Schedule(deleteOnBound, inBoundJob);
+		JobHandle convertJob = new ConvertOnEntryJob{
+			commandBuffer = buffer,
+			util = util
+		}.Schedule(convertInBound, deleteJob);
 
         // tell bufferSystem to wait for the process job, then it'll perform
         // buffered commands
-        commandBufferSystem.AddJobHandleForProducer(deleteJob);
-
-        return deleteJob;
+        commandBufferSystem.AddJobHandleForProducer(convertJob);
+        return convertJob;
     }
 }

@@ -116,6 +116,8 @@ public class BulletHitSystem : JobComponentSystem
 
                     // handle events to happen when bullet hits
                     if(damageInfo.pierceCount > 0){
+
+                        // causes a pierce to count once per frame
                         --damageInfo.pierceCount;
                         commandBuffer.SetComponent(idx, info.otherEnt, damageInfo);
                     }
