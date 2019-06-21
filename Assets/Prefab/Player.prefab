@@ -240,4 +240,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   bullet: {fileID: 316492841909355860, guid: 8df4c5af85b850d478b3218f77130c85, type: 3}
-  shotCooldown: 0.1
+  shotCooldown: 0.2

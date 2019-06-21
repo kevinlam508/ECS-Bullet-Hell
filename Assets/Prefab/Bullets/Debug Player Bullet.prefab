@@ -52,7 +52,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 77f404d04054c644389e2bcb9aed61cb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stats: {fileID: 11400000, guid: 84064428b1c4b88448d722ba62dc5f7d, type: 2}
+  stats: {fileID: 11400000, guid: 400f187090be22843bdf4869ffcc556c, type: 2}
 --- !u!33 &1340001947393781055
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -254,7 +254,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ae053f89380f1de4eab1fd1cec2dd7b5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  damageStats: {fileID: 11400000, guid: 419aaff32c9fc294c9bbe2e77c8f98b1, type: 2}
+  damageStats: {fileID: 11400000, guid: 07c23f40c3544be43a97ea011ff6b7d8, type: 2}
 --- !u!1 &3635137537920427483
 GameObject:
   m_ObjectHideFlags: 0

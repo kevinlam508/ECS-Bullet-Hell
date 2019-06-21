@@ -10,8 +10,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1348810e30babf24196ac20cbeedb97b, type: 3}
-  m_Name: Basic Linear
+  m_Name: Slow Linear
   m_EditorClassIdentifier: 
   moveType: 0
-  moveSpeed: 5
+  moveSpeed: 2
   rotateSpeed: 0

@@ -15,29 +15,24 @@ public class ParticleRequestSystem : ComponentSystem
         HitSpark
     }
 
-    public struct ParticleRequestUtility{
+    public static class RequestUtility{
 
-        public EntityArchetype requestArchetype;
-
-        public void CreateRequest(int idx, EntityCommandBuffer.Concurrent buffer, 
+        public static void CreateRequest(int idx, EntityCommandBuffer.Concurrent buffer, 
                 float3 position, ParticleType type){
 
-            Entity req = buffer.CreateEntity(idx, requestArchetype);
-            buffer.SetComponent(idx, req, new Translation{ Value = position });
-            buffer.SetComponent(idx, req, new ParticleRequest{ type = type });
+            Entity req = buffer.CreateEntity(idx);
+            buffer.AddComponent(idx, req, new Translation{ Value = position });
+            buffer.AddComponent(idx, req, new ParticleRequest{ type = type });
         }
 
-        public void CreateRequest(EntityCommandBuffer buffer, 
+        public static void CreateRequest(EntityCommandBuffer buffer, 
                 float3 position, ParticleType type){
 
-            Entity req = buffer.CreateEntity(requestArchetype);
-            buffer.SetComponent(req, new Translation{ Value = position });
-            buffer.SetComponent(req, new ParticleRequest{ type = type });
+            Entity req = buffer.CreateEntity();
+            buffer.AddComponent(req, new Translation{ Value = position });
+            buffer.AddComponent(req, new ParticleRequest{ type = type });
         }
     }
-
-    // utility for other classes
-    public ParticleRequestUtility Util { get; private set;}
 
     // request processing
 	EntityQuery requests;
@@ -54,11 +49,6 @@ public class ParticleRequestSystem : ComponentSystem
 
         commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
 
-        Util = new ParticleRequestUtility{
-            requestArchetype = EntityManager.CreateArchetype(
-                ComponentType.ReadOnly<ParticleRequest>(),
-                ComponentType.ReadOnly<Translation>())
-        };
         requests = GetEntityQuery(new EntityQueryDesc{
                 All = new ComponentType[]{
                     ComponentType.ReadOnly<ParticleRequest>(),

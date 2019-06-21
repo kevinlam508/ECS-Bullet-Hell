@@ -20,9 +20,6 @@ public class BulletMovementSystem : JobComponentSystem{
 	// entities to operate on
 	private EntityQuery physBullets;
 
-	// singleton to movement functions
-	private MoveUtility util;
-
 	protected override void OnCreateManager(){
 
 		// get all entities that have Plyaer and Translation
@@ -39,8 +36,6 @@ public class BulletMovementSystem : JobComponentSystem{
                     ComponentType.ReadOnly<Translation>()
                 }
             });
-
-		util = new MoveUtility();
 	}
 
     protected override JobHandle OnUpdate(JobHandle handle){
@@ -52,16 +47,16 @@ public class BulletMovementSystem : JobComponentSystem{
     	}
 
     	SetPhysVelJob velJob = new SetPhysVelJob{
-    		util = util,
+    		//util = util,
     		playerPos = EntityManager.GetComponentData<Translation>(player)
     	};
     	return velJob.Schedule(physBullets, handle);
     }
 
 
-	struct MoveUtility{
+	static class MoveUtility{
 
-		public float3 up(quaternion q){
+		public static float3 up(quaternion q){
 			return new float3(
 				2 * (q.value.x*q.value.y - q.value.w*q.value.z),
 				1 - 2 * (q.value.x*q.value.x + q.value.z*q.value.z),
@@ -73,12 +68,11 @@ public class BulletMovementSystem : JobComponentSystem{
 	[BurstCompile]
 	struct SetPhysVelJob : IJobForEach<BulletMovement, PhysicsVelocity, Translation, Rotation>{
 
-		public MoveUtility util;
 		public Translation playerPos;
 
 		public void Execute([ReadOnly] ref BulletMovement bm, ref PhysicsVelocity vel,
 				[ReadOnly] ref Translation pos, [ReadOnly] ref Rotation rotation){
-			float3 forward = util.up(rotation.Value);
+			float3 forward = MoveUtility.up(rotation.Value);
 			float3 bulletToPlayer = math.normalize(playerPos.Value - pos.Value);
 
 			vel.Linear = math.normalize(forward) * bm.moveSpeed;
