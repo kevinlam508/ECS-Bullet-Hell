@@ -6,6 +6,7 @@ using UnityEditor;
 [CustomEditor(typeof(Path))]
 public class PathInspector : Editor
 {
+
     void OnSceneGUI(){
     	Path path = target as Path;
 
@@ -262,15 +263,30 @@ public class PathInspector : Editor
     }
 
     private static void DrawCurve(Path path){
+
+    	Color[] colors = {
+    		new Color(1, 0, 0), 
+    		new Color(1, .5f, 0), 
+    		new Color(1, 1, 0),
+    		new Color(0, 1, 0), 
+    		new Color(0, 0, 1), 
+    		new Color(.15294f, 0, .2f),
+    		new Color(.54509f, 0, 1)};
+
 		for(int i = 0; i < path.NumPoints - 1; ++i){
+			float scaledVal = (colors.Length - 1f) * i / path.NumPoints;
+			int scaledIdx = (int)Mathf.Floor(scaledVal);
+			Color startColor = colors[scaledIdx];
+			Color endColor = colors[scaledIdx + 1];
+
 			// draw curve between two adjacent points
 			Handles.DrawBezier(path[i].position, 
 				path[i + 1].position, 
 				path[i].outTangent, 
 				path[i + 1].inTangent, 
-				Color.white, 
+				Color.Lerp(startColor, endColor, scaledVal - scaledIdx), 
 				null, 
-				3f);
+				2f);
 		}
 
 		// draw lines to selected tangents
@@ -299,6 +315,8 @@ public class PathInspector : Editor
     		time = 0;
     	}    	
     	float radAngle = path.AngleAt((int)Mathf.Floor(time), time - Mathf.Floor(time));
+
+    	// extra 90 degrees in rotation to make the forward vector front facing
     	trans.rotation = Quaternion.AngleAxis((Mathf.Rad2Deg * radAngle) - 90f, 
     		Vector3.forward);
 

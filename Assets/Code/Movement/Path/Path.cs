@@ -113,7 +113,7 @@ public class Path : MonoBehaviour
 	// returns the point on the curve between startIdx and startIdx + 1
 	public Vector3 EvalAt(int startIdx, float t){
 		if(startIdx >= NumPoints - 1){
-			Debug.LogError("Invalid startIdx in EvalAt");
+			Debug.LogError("Invalid startIdx: " + startIdx + " in EvalAt");
 		}
 
 		return BezierUtility.EvalPoint(points[startIdx].position, 
@@ -123,7 +123,7 @@ public class Path : MonoBehaviour
 
 	public Vector3 TangentAt(int startIdx, float t){
 		if(startIdx >= NumPoints - 1){
-			Debug.LogError("Invalid startIdx in EvalAt");
+			Debug.LogError("Invalid startIdx: " + startIdx + " in TangentAt");
 		}
 
     	return BezierUtility.EvalTangent(points[startIdx].position, 
@@ -133,21 +133,25 @@ public class Path : MonoBehaviour
 
 	// curScale will contain the next scale to use 
 	public Vector3 EvalConstantSpeed(ref float curScale, float dt){
-		// approx ideal dt for desired speed
+		// approx ideal dt for desired speed in steps
 		float travelDist = speed * dt;
-    	int leftIdx = (int)Mathf.Floor(curScale);
-    	float localT = curScale - leftIdx;
-		curScale += travelDist / (TangentAt(leftIdx, localT)).magnitude;
+		int numSubsteps = 10;
+	    int leftIdx = (int)Mathf.Floor(curScale);
+		for(int i = 0; i < numSubsteps && curScale < NumPoints - 1; ++i){
+	    	float localT = curScale - leftIdx;
+			curScale += travelDist / numSubsteps / (TangentAt(leftIdx, localT)).magnitude;
+			leftIdx = (int)Mathf.Floor(curScale);
+		}
 
 		// return new point
-		float clampedScale = Mathf.Min(NumPoints - 1.1f, curScale);
+		float clampedScale = Mathf.Min(NumPoints - 1.000001f, curScale);
 		leftIdx = (int)Mathf.Floor(clampedScale);
 		return EvalAt(leftIdx, clampedScale - leftIdx);
 	}
 
 	public float AngleAt(int startIdx, float t){
 		if(startIdx >= NumPoints - 1){
-			Debug.LogError("Invalid startIdx in AngleAt");
+			Debug.LogError("Invalid startIdx: " + startIdx + " in AngleAt");
 		}
 
     	return BezierUtility.EvalAngle(points[startIdx].position, 

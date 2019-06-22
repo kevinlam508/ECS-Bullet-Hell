@@ -153,71 +153,95 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   speed: 5
   points:
-  - position: {x: 4.8957505, y: 0.6877198, z: 0}
-    inTangent: {x: 4.7046857, y: -3.8611279, z: 0}
-    outTangent: {x: 4.9716463, y: 2.4946437, z: 0}
-    makeSmoothTangent: 1
+  - position: {x: -3.9784484, y: -1.042803, z: 0}
+    inTangent: {x: -4.9784484, y: -1.042803, z: 0}
+    outTangent: {x: -0.44296312, y: -2.6681142, z: 0}
+    makeSmoothTangent: 0
     controlId: 227
     isSelected: 0
-  - position: {x: 4.460929, y: 2.6947737, z: 0}
-    inTangent: {x: 4.7335925, y: 2.349156, z: 0}
-    outTangent: {x: 3.0094147, y: 4.5346575, z: 0}
+  - position: {x: 4.8957505, y: 0.6877198, z: 0}
+    inTangent: {x: 4.2057934, y: -3.8125544, z: 0}
+    outTangent: {x: 5.0945444, y: 1.9843625, z: 0}
     makeSmoothTangent: 1
     controlId: 228
+    isSelected: 0
+  - position: {x: 8.581554, y: 4.507346, z: 0}
+    inTangent: {x: 8.360253, y: 4.5993853, z: 0}
+    outTangent: {x: 8.981849, y: 4.3408637, z: 0}
+    makeSmoothTangent: 1
+    controlId: 229
+    isSelected: 0
+  - position: {x: 4.460929, y: 2.6947737, z: 0}
+    inTangent: {x: 5.3006225, y: 1.9195348, z: 0}
+    outTangent: {x: 4.210725, y: 2.9257722, z: 0}
+    makeSmoothTangent: 1
+    controlId: 230
     isSelected: 0
   - position: {x: 1.8818307, y: 1.9317701, z: 0}
     inTangent: {x: 10.334343, y: -4.8712606, z: 0}
     outTangent: {x: -2.3472102, y: 5.3355274, z: 0}
     makeSmoothTangent: 1
-    controlId: 229
+    controlId: 231
     isSelected: 0
   - position: {x: -0.5327947, y: 2.4587982, z: 0}
     inTangent: {x: -2.794177, y: -3.7846155, z: 0}
     outTangent: {x: 1.5401876, y: 8.182062, z: 0}
     makeSmoothTangent: 1
-    controlId: 230
-    isSelected: 1
+    controlId: 232
+    isSelected: 0
   - position: {x: 0.33132458, y: 1.7373787, z: 0}
     inTangent: {x: -5.228434, y: -0.6042197, z: 0}
     outTangent: {x: 4.5488796, y: 3.5136824, z: 0}
     makeSmoothTangent: 1
-    controlId: 231
+    controlId: 233
     isSelected: 0
   - position: {x: -0.20781755, y: -1.0174918, z: 0}
     inTangent: {x: 5.6910334, y: -1.0292572, z: 0}
     outTangent: {x: -6.314546, y: -1.0053118, z: 0}
     makeSmoothTangent: 1
-    controlId: 232
+    controlId: 234
     isSelected: 0
-  - position: {x: 0.8849368, y: 3.8466074, z: 0}
-    inTangent: {x: -6.9313407, y: 3.8630276, z: 0}
-    outTangent: {x: 8.2786, y: 3.8310752, z: 0}
-    makeSmoothTangent: 1
-    controlId: 233
+  - position: {x: 3.9399323, y: 5.2699566, z: 0}
+    inTangent: {x: 1.4004612, y: -2.3858225, z: 0}
+    outTangent: {x: 4.8070135, y: -1.2027214, z: 0}
+    makeSmoothTangent: 0
+    controlId: 235
     isSelected: 0
   - position: {x: -0.3727832, y: 4.2087812, z: 0}
     inTangent: {x: 1.3264353, y: 9.856407, z: 0}
     outTangent: {x: -2.6771507, y: -3.450155, z: 0}
     makeSmoothTangent: 1
-    controlId: 234
+    controlId: 236
     isSelected: 0
   - position: {x: -2.0606494, y: 4.1244144, z: 0}
     inTangent: {x: -14.943863, y: 12.8527155, z: 0}
     outTangent: {x: 4.869175, y: -0.5705004, z: 0}
     makeSmoothTangent: 1
-    controlId: 235
+    controlId: 237
     isSelected: 0
   - position: {x: -3.7022104, y: 3.388731, z: 0}
-    inTangent: {x: -14.38594, y: 10.799322, z: 0}
-    outTangent: {x: 1.6216283, y: -0.30406117, z: 0}
-    makeSmoothTangent: 1
-    controlId: 236
+    inTangent: {x: -1.7695469, y: 0.75460577, z: 0}
+    outTangent: {x: -0.6257019, y: -2.1328814, z: 0}
+    makeSmoothTangent: 0
+    controlId: 4414
     isSelected: 0
   - position: {x: -6.4570494, y: 0.46767628, z: 0}
     inTangent: {x: -6.905862, y: 3.004242, z: 0}
-    outTangent: {x: -5.961952, y: -2.3304815, z: 0}
+    outTangent: {x: -5.466855, y: -5.128639, z: 0}
     makeSmoothTangent: 1
-    controlId: 237
+    controlId: 7159
+    isSelected: 0
+  - position: {x: 3.4573474, y: -2.6358004, z: 0}
+    inTangent: {x: -6.430574, y: 14.072394, z: 0}
+    outTangent: {x: 3.9666452, y: -3.4963908, z: 0}
+    makeSmoothTangent: 1
+    controlId: 7197
+    isSelected: 0
+  - position: {x: 6.3504004, y: -1.4082565, z: 0}
+    inTangent: {x: 7.495811, y: -3.7487044, z: 0}
+    outTangent: {x: 5.910821, y: -0.51005256, z: 0}
+    makeSmoothTangent: 1
+    controlId: 7235
     isSelected: 0
 --- !u!4 &473967457
 Transform:
