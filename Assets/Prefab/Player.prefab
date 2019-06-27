@@ -17,6 +17,7 @@ GameObject:
   - component: {fileID: 4978863347029583818}
   - component: {fileID: 4978863347029583809}
   - component: {fileID: 4978863347029583810}
+  - component: {fileID: 3505228943295782246}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -241,3 +242,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   bullet: {fileID: 316492841909355860, guid: 8df4c5af85b850d478b3218f77130c85, type: 3}
   shotCooldown: 0.2
+--- !u!114 &3505228943295782246
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4978863347029583817}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b53b1fa2e6b97e2428a9d44031ea13d7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxHealth: 20

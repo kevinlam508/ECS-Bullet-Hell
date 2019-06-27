@@ -10,16 +10,12 @@ public class SceneSwapper : MonoBehaviour
 
     public static SceneSwapper instance = null;
 
-	[SerializeField] private string nextScene = null;
+	[SerializeField] private string[] scenes = {"Dummy"};
     
 	public delegate void SceneExit();
 	public static event SceneExit OnSceneExit;
 
 	void Awake(){
-    	if(nextScene == null){
-    		Debug.LogError("nextScene not specified on " + gameObject.name);
-    	}
-
         if(instance == null){
             instance = this;
         }
@@ -37,6 +33,13 @@ public class SceneSwapper : MonoBehaviour
     }
 
     public void ExitScene(){
+        ExitScene(0);
+    }
+
+    public void ExitScene(int sceneIdx){
+        if(sceneIdx > scenes.Length){
+            Debug.LogWarning("Scene index out of bounds: " + sceneIdx);
+        }
 
         // handle any scene exiting events if they exist
         if(OnSceneExit != null){
@@ -60,6 +63,6 @@ public class SceneSwapper : MonoBehaviour
         // reset for next scene
         instance = null;
         
-        SceneManager.LoadScene(nextScene);
+        SceneManager.LoadScene(scenes[0]);
     }
 }

@@ -3,14 +3,13 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 
-[CustomEditor(typeof(Path))]
+[CustomEditor(typeof(PathMovementProxy))]
 public class PathInspector : Editor
 {
-
     void OnSceneGUI(){
-    	Path path = target as Path;
+    	PathMovementProxy path = (PathMovementProxy)target;
 
-		foreach(Path.Point p in path.points){
+		foreach(PathMovementProxy.Point p in path.points){
     		p.controlId = GUIUtility.GetControlID(FocusType.Passive);
 		}
 		switch(Event.current.type){
@@ -31,33 +30,25 @@ public class PathInspector : Editor
 				UpdatePoint(path, i);
 			}
 		}
-		DrawUI(path);
     }
 
-    private void DrawUI(Path path){
-    	Handles.BeginGUI();
-        
-        GUILayout.BeginArea(new Rect(20, 20, 160, 160));
-        
-        Rect rect = EditorGUILayout.BeginVertical();
-        GUI.color = Color.white;
-        GUI.Box(rect, GUIContent.none);
-        
-        GUI.color = Color.white;
-        
-        GUILayout.BeginHorizontal();
-        GUILayout.FlexibleSpace();
-        GUILayout.Label("Point Controls");
-        GUILayout.FlexibleSpace();
-        GUILayout.EndHorizontal();
-        
-        GUILayout.BeginVertical();
-        GUILayout.FlexibleSpace();
-        GUI.backgroundColor = Color.gray;
+    public override void OnInspectorGUI(){
+        DrawDefaultInspector();
 
+        PathMovementProxy path = (PathMovementProxy)target;
+
+        GUILayout.Label("Point Controls", new GUIStyle(GUI.skin.label) {alignment = TextAnchor.MiddleCenter});
+
+        GUILayout.BeginHorizontal();
+        if(GUILayout.Button("Select All")){
+            path.SelectAll();
+        }
         if(GUILayout.Button("Deselect All")){
         	path.ResetSelection();
         }
+        GUILayout.EndHorizontal();
+
+        GUILayout.BeginHorizontal();
         if(GUILayout.Button("Add to Front")){
 	        Undo.RecordObject(path, "Added point to front");
             path.InsertPoint(0);
@@ -68,6 +59,8 @@ public class PathInspector : Editor
             path.InsertPoint(path.NumPoints);
 	        EditorUtility.SetDirty(path);
         }
+        GUILayout.EndHorizontal();
+
         if(GUILayout.Button("Bisect") && path.HasSelected){
 	        Undo.RecordObject(path, "Bisecting Curve");
             for(int i = path.NumPoints - 1; i > 0; --i){
@@ -86,18 +79,13 @@ public class PathInspector : Editor
             	}
             }
         }
+        if(GUILayout.Button("Duplicate Segment") && path.HasSelected){
+            Undo.RecordObject(path, "duplicating points");
+            path.DuplicateLongestSelectedSegment();
+        }
 
-        GUILayout.FlexibleSpace();
-        GUILayout.EndVertical();
+        GUILayout.Label("Previewing", new GUIStyle(GUI.skin.label) {alignment = TextAnchor.MiddleCenter});
 
-        GUILayout.BeginHorizontal();
-        GUILayout.FlexibleSpace();
-        GUILayout.Label("Previewing");
-        GUILayout.FlexibleSpace();
-        GUILayout.EndHorizontal();
-
-        GUILayout.BeginVertical();
-        GUILayout.FlexibleSpace();
         if(GUILayout.Button(playing ? "Stop Playing" : "Start Playing")){
         	if(playing){
         		StopUpdate();
@@ -106,19 +94,12 @@ public class PathInspector : Editor
         		StartUpdate();
         	}
         }
-
-        GUILayout.FlexibleSpace();
-        GUILayout.EndVertical();
         
-        
-        GUILayout.EndArea();
-        
-        Handles.EndGUI();
     }
 
-    private static void DrawSelectionHandles(Path path){
+    private static void DrawSelectionHandles(PathMovementProxy path){
     	for(int i = 0; i < path.NumPoints; ++i){
-    		Path.Point p = path[i];
+    		PathMovementProxy.Point p = path[i];
 
     		Handles.color = p.isSelected ? Color.blue : Color.white;
 
@@ -141,9 +122,9 @@ public class PathInspector : Editor
     	}
     }
 
-    private static void LayoutSelectionHandles(Path path){
+    private static void LayoutSelectionHandles(PathMovementProxy path){
     	for(int i = 0; i < path.NumPoints; ++i){
-    		Path.Point p = path[i];
+    		PathMovementProxy.Point p = path[i];
 
     		if(!p.makeSmoothTangent){
     			Handles.CubeHandleCap(
@@ -164,7 +145,7 @@ public class PathInspector : Editor
     	}
     }
 
-    private static void UpdateSelected(Path path){
+    private static void UpdateSelected(PathMovementProxy path){
 
         int id = HandleUtility.nearestControl;
         int changedIdx = -1;
@@ -193,9 +174,9 @@ public class PathInspector : Editor
 		}
     }
 
-    private static void UpdatePoint(Path path, int idx){
+    private static void UpdatePoint(PathMovementProxy path, int idx){
 
-    	Path.Point p = path[idx];
+    	PathMovementProxy.Point p = path[idx];
     	Vector3 newPoint;
 
         // update inTangent
@@ -242,14 +223,20 @@ public class PathInspector : Editor
             Undo.RecordObject(path, "Move Point " + idx);
             EditorUtility.SetDirty(path);
 
-            Vector3 oldPos = p.position;
-            p.position = newPoint;
-
-            // move tangents
-            Vector3 diff = p.position - oldPos;
-            p.inTangent += diff;
-            p.outTangent += diff;
+            // move all selected points
+            Vector3 diff = newPoint - p.position;
+            foreach(PathMovementProxy.Point point in path.points){
+                if(point.isSelected){
+                    MovePoint(point, diff);
+                }
+            }
         }
+    }
+
+    private static void MovePoint(PathMovementProxy.Point pt, Vector3 offset){
+        pt.position += offset;
+        pt.inTangent += offset;
+        pt.outTangent += offset;
     }
 
     // returns vector with direction of pt1 to pt2 with maginitude of pt3 - pt2
@@ -262,7 +249,7 @@ public class PathInspector : Editor
     	return res;
     }
 
-    private static void DrawCurve(Path path){
+    private static void DrawCurve(PathMovementProxy path){
 
     	Color[] colors = {
     		new Color(1, 0, 0), 
@@ -310,7 +297,7 @@ public class PathInspector : Editor
     Vector3 origPos;
     Quaternion origRot;
     void Update(){
-    	Path path = ((Path)target);
+    	PathMovementProxy path = ((PathMovementProxy)target);
     	if(time >= path.NumPoints - 1){
     		time = 0;
     	}    	
@@ -326,7 +313,7 @@ public class PathInspector : Editor
 
     private void StartUpdate(){
     	time = 0;
-    	trans = ((Path)target).gameObject.transform;
+    	trans = ((PathMovementProxy)target).gameObject.transform;
     	origPos = trans.position;
     	origRot = trans.rotation;
     	playing = true;

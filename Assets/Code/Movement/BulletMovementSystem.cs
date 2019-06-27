@@ -40,15 +40,15 @@ public class BulletMovementSystem : JobComponentSystem{
 
     protected override JobHandle OnUpdate(JobHandle handle){
     	// get and store the first entity, so NativeArray isn't made every frame
-    	if(!EntityManager.Exists(player)){
+    	if(!EntityManager.Exists(player) && playerGroup.CalculateLength() > 0){
     		NativeArray<Entity> ents = playerGroup.ToEntityArray(Allocator.TempJob);
     		player = ents[0];
     		ents.Dispose();
     	}
 
     	SetPhysVelJob velJob = new SetPhysVelJob{
-    		//util = util,
-    		playerPos = EntityManager.GetComponentData<Translation>(player)
+    		playerPos = (EntityManager.Exists(player)) ? EntityManager.GetComponentData<Translation>(player)
+    			: new Translation{Value = new float3(0, 0, 0)}
     	};
     	return velJob.Schedule(physBullets, handle);
     }

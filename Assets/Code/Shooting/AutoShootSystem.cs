@@ -43,6 +43,8 @@ public class AutoShootSystem : JobComponentSystem{
         public float bulletHeight;
 
         // buffers of TimePassed for all entities
+        // used across multiple jobs, but made it so each system only uses
+        //   1 element from the buffer per entity
         [NativeDisableParallelForRestriction]
         public BufferFromEntity<TimePassed> timePassedBuffers;
 
