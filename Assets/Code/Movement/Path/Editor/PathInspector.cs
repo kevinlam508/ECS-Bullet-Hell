@@ -80,8 +80,12 @@ public class PathInspector : Editor
             }
         }
         if(GUILayout.Button("Duplicate Segment") && path.HasSelected){
-            Undo.RecordObject(path, "duplicating points");
+            Undo.RecordObject(path, "Duplicating points");
             path.DuplicateLongestSelectedSegment();
+        }
+        if(GUILayout.Button("Make Circle") && path.HasSelected){
+            Undo.RecordObject(path, "Making Circle");
+            path.MakeCircleFromLongestSegment();
         }
 
         GUILayout.Label("Previewing", new GUIStyle(GUI.skin.label) {alignment = TextAnchor.MiddleCenter});

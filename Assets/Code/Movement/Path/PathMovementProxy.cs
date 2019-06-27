@@ -176,28 +176,255 @@ public class PathMovementProxy : MonoBehaviour, IConvertGameObjectToEntity
         }
 	}
 
+	/*
+	 * if there are at least two points selected, makes a circle where:
+	 *    order of points on circle : rotation that causes the least change to 
+	 *        the outTangent of the first idx
+	 *    radius : average of the distances from the points and the center point
+	 *    center : 
+	 *		  2 points: the missing corners of the rectangle of the points
+	 *        3 points: the average position of the first and last points
+	 *        4+ points: the average position of all points
+	 */		
 	public void MakeCircleFromLongestSegment(){
         // find the longest selected segment
-        int longestSegment = 2;
-        int segementStartIdx = 0;
-        FindLongestSegment(ref segementStartIdx, ref longestSegment);
+        int segmentLength = 1;
+        int idx = 0;
+        FindLongestSegment(ref idx, ref segmentLength);
 
-        switch(longestSegment){
+		// determine relative positions
+		Vector3 firstToSecond = points[idx + 1].position - points[idx].position;
+		Direction relX = (firstToSecond.x > 0) ? Direction.Right : Direction.Left;
+		Direction relY = (firstToSecond.y > 0) ? Direction.Up : Direction.Down;
+
+		// determine direction of rotation
+		Vector3 sideCheck = -Vector3.Cross(firstToSecond, Vector3.forward);
+		Rotation rot = (Vector3.Dot(sideCheck, points[idx].outTangent - points[idx].position) > 0)
+			? Rotation.Clockwise : Rotation.CounterClockwise;
+
+		Direction firstToCenterDir = Direction.Up;
+		Vector3 center = Vector3.zero;
+        switch(segmentLength){
         	case -1:	// none found, do nothing
-        		break;
+        	case 0:		// listed 0 and 1 in case of mistake
+        	case 1:
+        		return;
         	case 2:
-        		Make2PtCircle(segementStartIdx);
+        		Get2PtCircleCenter(idx, relX, relY, rot, out firstToCenterDir, out center);
         		break;
         	case 3:
+        		Get3PtCircleCenter(idx, out firstToCenterDir, out center);
         		break;
         	default:
+        		GetNPtCircleCenteR(idx, segmentLength, out firstToCenterDir, out center);
         		break;
         }
 
+		// average the radius
+		float radius = 0;
+		for(int i = 0; i < segmentLength; ++i){
+			radius += (points[i + idx].position - center).magnitude;
+		}
+		radius /= segmentLength;
+
+		AlignPointsToCircle(idx, segmentLength, center, firstToCenterDir, rot, radius);
 	}
 
-	private void Make2PtCircle(int idx){
-		
+	enum Direction{ Up, Right, Down, Left }
+	enum Rotation{ Clockwise, CounterClockwise }
+
+	// gets the center for the two points of a circle
+	private void Get2PtCircleCenter(int idx, Direction relX, Direction relY,
+			Rotation rot, out Direction toCenterDir, out Vector3 centerPos){
+		Vector3 firstToSecond = points[idx + 1].position - points[idx].position;
+
+		// determine where the center is
+		toCenterDir = GetCenterDir(relX, relY, rot);
+		centerPos = points[idx].position;
+		switch(toCenterDir){
+			case Direction.Up:
+			case Direction.Down:
+				centerPos.y += firstToSecond.y;
+				break;
+			case Direction.Right:
+			case Direction.Left:
+				centerPos.x += firstToSecond.x;
+				break;
+		}
+	}
+
+	// center is average of first and third points
+	private void Get3PtCircleCenter(int idx, out Direction toCenterDir, 
+			out Vector3 centerPos){
+		centerPos = (points[idx].position + points[idx + 2].position) / 2;
+
+		// direction is along axis with strongest maginitude
+		Vector3 firstToCenter = centerPos - points[idx].position;
+		if(Mathf.Abs(firstToCenter.x) >  Mathf.Abs(firstToCenter.y)){
+			if(firstToCenter.x > 0){
+				toCenterDir = Direction.Right;
+			}
+			else{
+				toCenterDir = Direction.Left;
+			}
+		}
+		else{
+			if(firstToCenter.y > 0){
+				toCenterDir = Direction.Up;
+			}
+			else{
+				toCenterDir = Direction.Down;
+			}
+		}
+	}
+
+	// center is average of first 4 points
+	private void GetNPtCircleCenteR(int idx, int numPoints, out Direction toCenterDir, 
+			out Vector3 centerPos){
+
+		// get average
+		centerPos = Vector3.zero;
+		for(int i = 0; i < 4; ++i){
+			centerPos += points[i + idx].position;
+		}
+		centerPos /= 4;
+
+		// direction is along axis with strongest maginitude
+		Vector3 firstToCenter = centerPos - points[idx].position;
+		if(Mathf.Abs(firstToCenter.x) >  Mathf.Abs(firstToCenter.y)){
+			if(firstToCenter.x > 0){
+				toCenterDir = Direction.Right;
+			}
+			else{
+				toCenterDir = Direction.Left;
+			}
+		}
+		else{
+			if(firstToCenter.y > 0){
+				toCenterDir = Direction.Up;
+			}
+			else{
+				toCenterDir = Direction.Down;
+			}
+		}
+	}
+
+	// makes a circle from the given params
+	private void AlignPointsToCircle(int startIdx, int numPoints, Vector3 center,
+			Direction firstToCenterDir, Rotation rot, float radius){
+
+		Direction ptDirection = (Direction)(((int)firstToCenterDir + 2) % 4);
+		int nextDirOffset = (rot == Rotation.Clockwise) ? 1 : 3;
+		for(int i = 0; i < numPoints; ++i){
+			Point curPoint = points[startIdx + i];
+			curPoint.makeSmoothTangent = true;
+
+			// update position
+			switch(ptDirection){
+				case Direction.Up:
+					curPoint.position = center + (Vector3.up * radius);
+					break;
+				case Direction.Left:
+					curPoint.position = center + (Vector3.left * radius);
+					break;
+				case Direction.Down:
+					curPoint.position = center + (Vector3.down * radius);
+					break;
+				case Direction.Right:
+					curPoint.position = center + (Vector3.right * radius);
+					break;
+			}
+
+			// update outTangent, it's direction is the next one in the rotation
+			switch((Direction)(((int)ptDirection + nextDirOffset) % 4)){
+				case Direction.Up:
+					curPoint.outTangent = curPoint.position + (Vector3.up 
+						* radius * BezierUtility.circleConst);
+					break;
+				case Direction.Left:
+					curPoint.outTangent = curPoint.position + (Vector3.left 
+						* radius * BezierUtility.circleConst);
+					break;
+				case Direction.Down:
+					curPoint.outTangent = curPoint.position + (Vector3.down 
+						* radius * BezierUtility.circleConst);
+					break;
+				case Direction.Right:
+					curPoint.outTangent = curPoint.position + (Vector3.right 
+						* radius * BezierUtility.circleConst);
+					break;
+			}
+
+			// update next's inTangent if in bounds
+			// direction of inTangent is next next one in rotation
+			if(i + 1 < numPoints){
+				int idx = startIdx + i + 1;
+				switch(ptDirection){
+					case Direction.Up:
+						points[idx].inTangent = points[idx].position 
+							+ (Vector3.up * radius * BezierUtility.circleConst);
+						break;
+					case Direction.Left:
+						points[idx].inTangent = points[idx].position 
+							+ (Vector3.left * radius * BezierUtility.circleConst);
+						break;
+					case Direction.Down:
+						points[idx].inTangent = points[idx].position 
+							+ (Vector3.down * radius * BezierUtility.circleConst);
+						break;
+					case Direction.Right:
+						points[idx].inTangent = points[idx].position 
+							+ (Vector3.right * radius * BezierUtility.circleConst);
+						break;
+				}
+			}
+
+			// update direction depending on rotation
+			ptDirection = (Direction)(((int)ptDirection + nextDirOffset) % 4);
+		}
+
+		// first and last points may not have smooth tangents
+		points[startIdx].makeSmoothTangent = points[startIdx + numPoints  - 1].makeSmoothTangent 
+			= false;
+	}
+
+	// returns up if invalid, otherwise the direction to to the center relative
+	//    to the first point
+	private Direction GetCenterDir(Direction relX, Direction relY, Rotation rot){
+		if(rot == Rotation.Clockwise){
+			if(relX == Direction.Right && relY == Direction.Down){
+				return Direction.Down;
+			}
+			else if(relX == Direction.Left && relY == Direction.Down){
+				return Direction.Left;
+			}
+			else if(relX == Direction.Left && relY == Direction.Up){
+				return Direction.Up;
+			}
+			else if(relX == Direction.Right && relY == Direction.Up){
+				return Direction.Right;
+			}
+			else{
+				return Direction.Up;
+			}
+		}
+		else{
+			if(relX == Direction.Right && relY == Direction.Down){
+				return Direction.Right;
+			}
+			else if(relX == Direction.Left && relY == Direction.Down){
+				return Direction.Down;
+			}
+			else if(relX == Direction.Left && relY == Direction.Up){
+				return Direction.Left;
+			}
+			else if(relX == Direction.Right && relY == Direction.Up){
+				return Direction.Up;
+			}
+			else{
+				return Direction.Up;
+			}
+		}
 	}
 
 	public static void GetNewTangents(Vector3[] oldControl, ref Vector3 leftOut, 
