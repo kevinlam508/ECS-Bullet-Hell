@@ -32,6 +32,9 @@ public class PathMovementProxy : MonoBehaviour, IConvertGameObjectToEntity
 
 	[Tooltip("Speed that the game object will move in the preview")]
 	public float speed = 1f;
+
+	[Tooltip("The point to go to after reaching the end, a negative number or a number beyond the number of points means no looping")]
+	public int loopIndex = -1;
 	public List<Point> points = new List<Point>();
 
 	public int NumPoints => points.Count;
@@ -44,6 +47,12 @@ public class PathMovementProxy : MonoBehaviour, IConvertGameObjectToEntity
 				}
 			}
 			return false;
+		}
+	}
+
+	public bool HasLoop{
+		get{
+			return loopIndex >= 0 && loopIndex < NumPoints;
 		}
 	}
 
@@ -126,6 +135,19 @@ public class PathMovementProxy : MonoBehaviour, IConvertGameObjectToEntity
 			}
 		}
 		points.Insert(idx, newPoint);
+	}
+
+	public static void GetNewTangents(Vector3[] oldControl, ref Vector3 leftOut, 
+			ref Vector3 midIn, ref Vector3 midOut, ref Vector3 rightIn){
+		if(oldControl.Length != 4){
+			Debug.LogError("Not enough points to get control points");
+		}
+
+		leftOut = (oldControl[0] + oldControl[1]) / 2;
+		rightIn = (oldControl[2] + oldControl[3]) / 2;
+		Vector3 midMidpoint = (oldControl[2] + oldControl[1]) / 2;
+		midIn = (leftOut + midMidpoint) / 2;
+		midOut = (rightIn + midMidpoint) / 2;
 	}
 
 	// Provide where to start the search and the minimum size as args
@@ -427,35 +449,142 @@ public class PathMovementProxy : MonoBehaviour, IConvertGameObjectToEntity
 		}
 	}
 
-	public static void GetNewTangents(Vector3[] oldControl, ref Vector3 leftOut, 
-			ref Vector3 midIn, ref Vector3 midOut, ref Vector3 rightIn){
-		if(oldControl.Length != 4){
-			Debug.LogError("Not enough points to get control points");
+	// reflects selected points across x = 0
+	public void FlipOnGlobalX(){
+		foreach(Point p in points){
+			if(p.isSelected){
+				p.position.x = -p.position.x;
+				p.inTangent.x = -p.inTangent.x;
+				p.outTangent.x = -p.outTangent.x;
+			}
+		}
+	}
+
+	// reflects selected points across y = 0
+	public void FlipOnGlobalY(){
+		foreach(Point p in points){
+			if(p.isSelected){
+				p.position.y = -p.position.y;
+				p.inTangent.y = -p.inTangent.y;
+				p.outTangent.y = -p.outTangent.y;
+			}
+		}
+	}
+
+	// reflects selected points across average x, excludes tangents in average
+	public void FlipOnLocalX(){
+		// determine average
+		float average = 0;
+		int count = 0;
+		foreach(Point p in points){
+			if(p.isSelected){
+				average += p.position.x;
+				++count;
+			}
+		}
+		average /= count;
+
+		// move center points on (0, 0, 0)
+		foreach(Point p in points){
+			if(p.isSelected){
+				p.position.x -= average;
+				p.inTangent.x -= average;
+				p.outTangent.x -= average;
+			}
 		}
 
-		leftOut = (oldControl[0] + oldControl[1]) / 2;
-		rightIn = (oldControl[2] + oldControl[3]) / 2;
-		Vector3 midMidpoint = (oldControl[2] + oldControl[1]) / 2;
-		midIn = (leftOut + midMidpoint) / 2;
-		midOut = (rightIn + midMidpoint) / 2;
+		// flip on global
+		FlipOnGlobalX();
+
+		// move points back to original center
+		foreach(Point p in points){
+			if(p.isSelected){
+				p.position.x += average;
+				p.inTangent.x += average;
+				p.outTangent.x += average;
+			}
+		}
+	}
+
+	// reflects selected points across average y, excludes tangents in average
+	public void FlipOnLocalY(){
+		// determine average
+		float average = 0;
+		int count = 0;
+		foreach(Point p in points){
+			if(p.isSelected){
+				average += p.position.y;
+				++count;
+			}
+		}
+		average /= count;
+
+		// move center points on (0, 0, 0)
+		foreach(Point p in points){
+			if(p.isSelected){
+				p.position.y -= average;
+				p.inTangent.y -= average;
+				p.outTangent.y -= average;
+			}
+		}
+
+		// flip on global
+		FlipOnGlobalY();
+
+		// move points back to original center
+		foreach(Point p in points){
+			if(p.isSelected){
+				p.position.y += average;
+				p.inTangent.y += average;
+				p.outTangent.y += average;
+			}
+		}
+	}
+
+	// swaps the sides the tangents are on
+	public void FlipTangents(){
+		foreach(Point p in points){
+			if(p.isSelected){
+				Vector3 posToOut = p.outTangent - p.position;
+				Vector3 posToIn = p.inTangent - p.position;
+				p.outTangent = p.position - posToIn;
+				p.inTangent = p.position - posToOut;
+			}
+		}
 	}
 
 	// returns the point on the curve between startIdx and startIdx + 1
 	public Vector3 EvalAt(int startIdx, float t){
-		if(startIdx >= NumPoints - 1){
+		if(!HasLoop && startIdx >= NumPoints - 1){
+			Debug.LogError("Invalid startIdx: " + startIdx + " in EvalAt");
+		}
+		else if(HasLoop && startIdx >= NumPoints){
 			Debug.LogError("Invalid startIdx: " + startIdx + " in EvalAt");
 		}
 
+		if(HasLoop && startIdx == NumPoints - 1){
+			return BezierUtility.EvalPoint(points[startIdx].position, 
+				points[startIdx].outTangent, points[loopIndex].inTangent,
+				points[loopIndex].position, t);
+		}
 		return BezierUtility.EvalPoint(points[startIdx].position, 
 			points[startIdx].outTangent, points[startIdx + 1].inTangent,
 			points[startIdx + 1].position, t);
 	}
 
 	public Vector3 TangentAt(int startIdx, float t){
-		if(startIdx >= NumPoints - 1){
+		if(!HasLoop && startIdx >= NumPoints - 1){
+			Debug.LogError("Invalid startIdx: " + startIdx + " in TangentAt");
+		}
+		else if(HasLoop && startIdx >= NumPoints){
 			Debug.LogError("Invalid startIdx: " + startIdx + " in TangentAt");
 		}
 
+		if(HasLoop && startIdx == NumPoints - 1){
+			return BezierUtility.EvalTangent(points[startIdx].position, 
+				points[startIdx].outTangent, points[loopIndex].inTangent,
+				points[loopIndex].position, t);
+		}
     	return BezierUtility.EvalTangent(points[startIdx].position, 
 			points[startIdx].outTangent, points[startIdx + 1].inTangent,
 			points[startIdx + 1].position, t);
@@ -467,23 +596,46 @@ public class PathMovementProxy : MonoBehaviour, IConvertGameObjectToEntity
 		float travelDist = speed * dt;
 		int numSubsteps = 10;
 	    int leftIdx = (int)Mathf.Floor(curScale);
-		for(int i = 0; i < numSubsteps && curScale < NumPoints - 1; ++i){
+		for(int i = 0; i < numSubsteps && ((curScale < NumPoints - 1 && !HasLoop) || (curScale < NumPoints && HasLoop)); ++i){
 	    	float localT = curScale - leftIdx;
 			curScale += travelDist / numSubsteps / (TangentAt(leftIdx, localT)).magnitude;
 			leftIdx = (int)Mathf.Floor(curScale);
 		}
 
 		// return new point
-		float clampedScale = Mathf.Min(NumPoints - 1.000001f, curScale);
-		leftIdx = (int)Mathf.Floor(clampedScale);
-		return EvalAt(leftIdx, clampedScale - leftIdx);
+		float evalT = 0;
+		int evalIdx = -1;
+		// at last point for non loop, stay at last point
+		if(!HasLoop && curScale >= NumPoints - 1){
+			evalT = 1f;
+			evalIdx = NumPoints - 2;
+		}
+		// past last point for loop, go towards loop index
+		else if(HasLoop && curScale >= NumPoints){
+			evalT = 1f;
+			evalIdx = NumPoints - 1;
+		}
+		// normal case
+		else{
+			evalIdx = (int)Mathf.Floor(curScale);
+			evalT = curScale - evalIdx;
+		}
+		return EvalAt(evalIdx, evalT);
 	}
 
 	public float AngleAt(int startIdx, float t){
-		if(startIdx >= NumPoints - 1){
+		if(!HasLoop && startIdx >= NumPoints - 1){
+			Debug.LogError("Invalid startIdx: " + startIdx + " in AngleAt");
+		}
+		else if(HasLoop && startIdx >= NumPoints){
 			Debug.LogError("Invalid startIdx: " + startIdx + " in AngleAt");
 		}
 
+		if(HasLoop && startIdx == NumPoints - 1){
+			return BezierUtility.EvalAngle(points[startIdx].position, 
+				points[startIdx].outTangent, points[loopIndex].inTangent,
+				points[loopIndex].position, t);
+		}
     	return BezierUtility.EvalAngle(points[startIdx].position, 
 			points[startIdx].outTangent, points[startIdx + 1].inTangent,
 			points[startIdx + 1].position, t);

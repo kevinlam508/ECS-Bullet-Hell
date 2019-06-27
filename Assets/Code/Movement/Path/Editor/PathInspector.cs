@@ -6,6 +6,8 @@ using UnityEditor;
 [CustomEditor(typeof(PathMovementProxy))]
 public class PathInspector : Editor
 {
+    private bool lockTangentLength = false;
+
     void OnSceneGUI(){
     	PathMovementProxy path = (PathMovementProxy)target;
 
@@ -27,7 +29,7 @@ public class PathInspector : Editor
 
 		for(int i = 0; i < path.NumPoints; ++i){
 			if(path[i].isSelected){
-				UpdatePoint(path, i);
+				UpdatePoint(path, i, lockTangentLength);
 			}
 		}
     }
@@ -37,8 +39,7 @@ public class PathInspector : Editor
 
         PathMovementProxy path = (PathMovementProxy)target;
 
-        GUILayout.Label("Point Controls", new GUIStyle(GUI.skin.label) {alignment = TextAnchor.MiddleCenter});
-
+        GUILayout.Label("Selection", new GUIStyle(GUI.skin.label) {alignment = TextAnchor.MiddleCenter});
         GUILayout.BeginHorizontal();
         if(GUILayout.Button("Select All")){
             path.SelectAll();
@@ -48,6 +49,18 @@ public class PathInspector : Editor
         }
         GUILayout.EndHorizontal();
 
+        // editing
+        GUILayout.Label("Editing", new GUIStyle(GUI.skin.label) {alignment = TextAnchor.MiddleCenter});
+        if(lockTangentLength){
+            if(GUILayout.Button("Unlock Tangent Length")){
+                lockTangentLength = false;
+            }
+        }
+        else {
+            if(GUILayout.Button("Lock Tangent Length")){
+                lockTangentLength = true;
+            }
+        }
         GUILayout.BeginHorizontal();
         if(GUILayout.Button("Add to Front")){
 	        Undo.RecordObject(path, "Added point to front");
@@ -83,9 +96,39 @@ public class PathInspector : Editor
             Undo.RecordObject(path, "Duplicating points");
             path.DuplicateLongestSelectedSegment();
         }
+
+        // circle
+        GUILayout.Label("Circles", new GUIStyle(GUI.skin.label) {alignment = TextAnchor.MiddleCenter});
         if(GUILayout.Button("Make Circle") && path.HasSelected){
             Undo.RecordObject(path, "Making Circle");
             path.MakeCircleFromLongestSegment();
+        }
+
+        // flips
+        GUILayout.Label("Flips", new GUIStyle(GUI.skin.label) {alignment = TextAnchor.MiddleCenter});
+        GUILayout.BeginHorizontal();
+        if(GUILayout.Button("Flip on Global X") && path.HasSelected){
+            Undo.RecordObject(path, "Flipped on Global X");
+            path.FlipOnGlobalX();
+        }
+        if(GUILayout.Button("Flip on Global Y") && path.HasSelected){
+            Undo.RecordObject(path, "Flipped on Global Y");
+            path.FlipOnGlobalY();
+        }
+        GUILayout.EndHorizontal();
+        GUILayout.BeginHorizontal();
+        if(GUILayout.Button("Flip on Local X") && path.HasSelected){
+            Undo.RecordObject(path, "Flipped on Local X");
+            path.FlipOnLocalX();
+        }
+        if(GUILayout.Button("Flip on Local Y") && path.HasSelected){
+            Undo.RecordObject(path, "Flipped on Local Y");
+            path.FlipOnLocalY();
+        }
+        GUILayout.EndHorizontal();
+        if(GUILayout.Button("Flip Tangents") && path.HasSelected){
+            Undo.RecordObject(path, "Flipped tangents");
+            path.FlipTangents();
         }
 
         GUILayout.Label("Previewing", new GUIStyle(GUI.skin.label) {alignment = TextAnchor.MiddleCenter});
@@ -178,20 +221,29 @@ public class PathInspector : Editor
 		}
     }
 
-    private static void UpdatePoint(PathMovementProxy path, int idx){
+    private static void UpdatePoint(PathMovementProxy path, int idx, bool lockTangentLength){
 
     	PathMovementProxy.Point p = path[idx];
     	Vector3 newPoint;
 
         // update inTangent
-        if(idx > 0){
+        if((path.HasLoop && path.loopIndex == 0) || idx > 0){
 	        EditorGUI.BeginChangeCheck();
 	        newPoint = Handles.PositionHandle(p.inTangent, Quaternion.identity);
 	        if (EditorGUI.EndChangeCheck())
 	        {
 	            Undo.RecordObject(path, "Move In Tangent " + idx);
-	            EditorUtility.SetDirty(path);
-	            p.inTangent = newPoint;
+                EditorUtility.SetDirty(path);
+                if(!lockTangentLength){
+                    p.inTangent = newPoint;
+                }
+                // lock distance
+                else{
+                    Vector3 direction = (newPoint - p.position);
+                    direction.Normalize();
+                    direction *= (p.inTangent - p.position).magnitude;
+                    p.inTangent = p.position + direction;
+                }
 
 	            // make all 3 points colinear
 	            if(p.makeSmoothTangent){
@@ -202,14 +254,23 @@ public class PathInspector : Editor
 	    }
 
         // update outTangent
-        if(idx < path.points.Count - 1){
+        if(path.HasLoop || idx < path.points.Count - 1){
 	        EditorGUI.BeginChangeCheck();
 	        newPoint = Handles.PositionHandle(p.outTangent, Quaternion.identity);
 	        if (EditorGUI.EndChangeCheck())
 	        {
 	            Undo.RecordObject(path, "Move Out Tangent " + idx);
-	            EditorUtility.SetDirty(path);
-	            p.outTangent = newPoint;
+                EditorUtility.SetDirty(path);
+	            if(!lockTangentLength){
+                    p.outTangent = newPoint;
+                }
+                // lock distance
+                else{
+                    Vector3 direction = (newPoint - p.position);
+                    direction.Normalize();
+                    direction *= (p.outTangent - p.position).magnitude;
+                    p.outTangent = p.position + direction;
+                }
 
 	            // make all 3 points colinear
 	            if(p.makeSmoothTangent){
@@ -280,14 +341,24 @@ public class PathInspector : Editor
 				2f);
 		}
 
+        if(path.HasLoop){
+            Handles.DrawBezier(path[path.NumPoints - 1].position, 
+                path[path.loopIndex].position, 
+                path[path.NumPoints - 1].outTangent, 
+                path[path.loopIndex].inTangent, 
+                Color.Lerp(colors[colors.Length - 1], colors[0], .5f), 
+                null, 
+                2f);
+        }
+
 		// draw lines to selected tangents
 		for(int i = 0; i < path.NumPoints; ++i){
 			if(path[i].isSelected){
 				Handles.color = Color.gray;
-				if(i < path.NumPoints - 1){
+				if(path.HasLoop || i < path.NumPoints - 1){
 					Handles.DrawLine(path[i].position, path[i].outTangent);
 				}
-				if(i > 0){
+				if((path.HasLoop && path.loopIndex == 0) || i > 0){
 					Handles.DrawLine(path[i].position, path[i].inTangent);
 				}
 			}
@@ -302,9 +373,13 @@ public class PathInspector : Editor
     Quaternion origRot;
     void Update(){
     	PathMovementProxy path = ((PathMovementProxy)target);
-    	if(time >= path.NumPoints - 1){
+    	if(!path.HasLoop && time >= path.NumPoints - 1){
     		time = 0;
-    	}    	
+    	}
+        else if(path.HasLoop && time >= path.NumPoints){
+            time -= path.NumPoints;
+            time += path.loopIndex;
+        }
     	float radAngle = path.AngleAt((int)Mathf.Floor(time), time - Mathf.Floor(time));
 
     	// extra 90 degrees in rotation to make the forward vector front facing
