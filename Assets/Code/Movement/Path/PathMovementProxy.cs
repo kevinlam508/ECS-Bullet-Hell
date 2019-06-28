@@ -214,6 +214,11 @@ public class PathMovementProxy : MonoBehaviour, IConvertGameObjectToEntity
         int idx = 0;
         FindLongestSegment(ref idx, ref segmentLength);
 
+        // no segment, just leave
+        if(idx < 0){
+        	return;
+        }
+
 		// determine relative positions
 		Vector3 firstToSecond = points[idx + 1].position - points[idx].position;
 		Direction relX = (firstToSecond.x > 0) ? Direction.Right : Direction.Left;
@@ -238,7 +243,7 @@ public class PathMovementProxy : MonoBehaviour, IConvertGameObjectToEntity
         		Get3PtCircleCenter(idx, out firstToCenterDir, out center);
         		break;
         	default:
-        		GetNPtCircleCenteR(idx, segmentLength, out firstToCenterDir, out center);
+        		GetNPtCircleCenter(idx, segmentLength, out firstToCenterDir, out center);
         		break;
         }
 
@@ -301,7 +306,7 @@ public class PathMovementProxy : MonoBehaviour, IConvertGameObjectToEntity
 	}
 
 	// center is average of first 4 points
-	private void GetNPtCircleCenteR(int idx, int numPoints, out Direction toCenterDir, 
+	private void GetNPtCircleCenter(int idx, int numPoints, out Direction toCenterDir, 
 			out Vector3 centerPos){
 
 		// get average
@@ -337,7 +342,26 @@ public class PathMovementProxy : MonoBehaviour, IConvertGameObjectToEntity
 
 		Direction ptDirection = (Direction)(((int)firstToCenterDir + 2) % 4);
 		int nextDirOffset = (rot == Rotation.Clockwise) ? 1 : 3;
-		for(int i = 0; i < numPoints; ++i){
+
+		// update first point, so next point can properly set outTangent
+		switch(ptDirection){
+			case Direction.Up:
+				points[startIdx].position = center + (Vector3.up * radius);
+				break;
+			case Direction.Left:
+				points[startIdx].position = center + (Vector3.left * radius);
+				break;
+			case Direction.Down:
+				points[startIdx].position = center + (Vector3.down * radius);
+				break;
+			case Direction.Right:
+				points[startIdx].position = center + (Vector3.right * radius);
+				break;
+		}
+		ptDirection = (Direction)(((int)ptDirection + nextDirOffset) % 4);
+
+		// update self, own inTangent, previous's outTangent
+		for(int i = 1; i < numPoints; ++i){
 			Point curPoint = points[startIdx + i];
 			curPoint.makeSmoothTangent = true;
 
@@ -357,45 +381,45 @@ public class PathMovementProxy : MonoBehaviour, IConvertGameObjectToEntity
 					break;
 			}
 
-			// update outTangent, it's direction is the next one in the rotation
-			switch((Direction)(((int)ptDirection + nextDirOffset) % 4)){
+			// update inTangent, it's direction is the previous one in the rotation
+			switch((Direction)(((int)ptDirection + 4 - nextDirOffset) % 4)){
 				case Direction.Up:
-					curPoint.outTangent = curPoint.position + (Vector3.up 
+					curPoint.inTangent = curPoint.position + (Vector3.up 
 						* radius * BezierUtility.circleConst);
 					break;
 				case Direction.Left:
-					curPoint.outTangent = curPoint.position + (Vector3.left 
+					curPoint.inTangent = curPoint.position + (Vector3.left 
 						* radius * BezierUtility.circleConst);
 					break;
 				case Direction.Down:
-					curPoint.outTangent = curPoint.position + (Vector3.down 
+					curPoint.inTangent = curPoint.position + (Vector3.down 
 						* radius * BezierUtility.circleConst);
 					break;
 				case Direction.Right:
-					curPoint.outTangent = curPoint.position + (Vector3.right 
+					curPoint.inTangent = curPoint.position + (Vector3.right 
 						* radius * BezierUtility.circleConst);
 					break;
 			}
 
-			// update next's inTangent if in bounds
-			// direction of inTangent is next next one in rotation
-			if(i + 1 < numPoints){
-				int idx = startIdx + i + 1;
+			// update previous's outTangent if in bounds
+			// direction of outTangent is current direction
+			if(i - 1 >= 0){
+				int idx = startIdx + i - 1;
 				switch(ptDirection){
 					case Direction.Up:
-						points[idx].inTangent = points[idx].position 
+						points[idx].outTangent = points[idx].position 
 							+ (Vector3.up * radius * BezierUtility.circleConst);
 						break;
 					case Direction.Left:
-						points[idx].inTangent = points[idx].position 
+						points[idx].outTangent = points[idx].position 
 							+ (Vector3.left * radius * BezierUtility.circleConst);
 						break;
 					case Direction.Down:
-						points[idx].inTangent = points[idx].position 
+						points[idx].outTangent = points[idx].position 
 							+ (Vector3.down * radius * BezierUtility.circleConst);
 						break;
 					case Direction.Right:
-						points[idx].inTangent = points[idx].position 
+						points[idx].outTangent = points[idx].position 
 							+ (Vector3.right * radius * BezierUtility.circleConst);
 						break;
 				}
