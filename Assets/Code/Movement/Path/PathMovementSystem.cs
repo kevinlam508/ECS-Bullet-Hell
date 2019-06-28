@@ -51,7 +51,7 @@ public class PathMovementSystem : JobComponentSystem{
     		// compute update
     		TimePassed curScale = timeBuffer[pathData.timeIdx];
     		float3 nextPos = EvalConstantSpeed(ref points, ref curScale.time,
-    			pathData.speed);
+    			pathData.speed, pathData.loopIndex);
 
     		// update components
     		timeBuffer[pathData.timeIdx] = curScale;
@@ -59,31 +59,63 @@ public class PathMovementSystem : JobComponentSystem{
     	}
 
     	private float3 EvalConstantSpeed(ref DynamicBuffer<PathPoint> points, 
-    			ref float curScale, float speed){
+    			ref float curScale, float speed, int loopIndex){
+            bool hasLoop = BezierUtility.HasLoop(loopIndex, points.Length);
 
     		// approx ideal about to move on scale
     		float travelDist = speed * dt;
 			int numSubsteps = 10;
 		    int leftIdx = (int)math.floor(curScale);
-			for(int i = 0; i < numSubsteps && curScale < points.Length - 1; ++i){
+			for(int i = 0; i < numSubsteps && BezierUtility.IsInBound(curScale, loopIndex, points.Length); ++i){
 		    	float localT = curScale - leftIdx;
 				curScale += travelDist / numSubsteps / math.length(
-					BezierUtility.EvalTangent(points[leftIdx].position, 
-						points[leftIdx].outTangent, points[leftIdx + 1].inTangent, 
-						points[leftIdx + 1].position, localT));
+					TangentAt(ref points, leftIdx, localT, loopIndex));
 				leftIdx = (int)math.floor(curScale);
 			}
 
 			// outside curve, return position of last point
-			if(curScale >= points.Length - 1){
+			if(!hasLoop && curScale >= points.Length - 1){
 				return points[points.Length - 1].position;
 			}
+            // looping and beyond loop point, reset as if at loop point
+            else if(hasLoop && curScale >= points.Length){
+                curScale -= points.Length;
+                curScale += loopIndex;
+                leftIdx = (int)math.floor(curScale);
+                return EvalAt(ref points, leftIdx, curScale - leftIdx, loopIndex);
+            }
 			// still inside curve
 			else{
-				return BezierUtility.EvalPoint(points[leftIdx].position, 
-					points[leftIdx].outTangent, points[leftIdx + 1].inTangent, 
-					points[leftIdx + 1].position, curScale - leftIdx);
+				return EvalAt(ref points, leftIdx, curScale - leftIdx, loopIndex);
 			}
     	}
+
+        // returns the point on the curve between startIdx and startIdx + 1
+        public Vector3 EvalAt(ref DynamicBuffer<PathPoint> points, int startIdx, 
+                float t, int loopIndex){
+
+            if(BezierUtility.HasLoop(loopIndex, points.Length) && startIdx == points.Length - 1){
+                return BezierUtility.EvalPoint(points[startIdx].position, 
+                    points[startIdx].outTangent, points[loopIndex].inTangent,
+                    points[loopIndex].position, t);
+            }
+            return BezierUtility.EvalPoint(points[startIdx].position, 
+                points[startIdx].outTangent, points[startIdx + 1].inTangent,
+                points[startIdx + 1].position, t);
+        }
+
+        // returns the tangent at the point on the curve between startIdx and startIdx + 1
+        public float3 TangentAt(ref DynamicBuffer<PathPoint> points, int startIdx, 
+                float t, int loopIndex){
+
+            if(BezierUtility.HasLoop(loopIndex, points.Length) && startIdx == points.Length - 1){
+                return BezierUtility.EvalTangent(points[startIdx].position, 
+                    points[startIdx].outTangent, points[loopIndex].inTangent,
+                    points[loopIndex].position, t);
+            }
+            return BezierUtility.EvalTangent(points[startIdx].position, 
+                points[startIdx].outTangent, points[startIdx + 1].inTangent,
+                points[startIdx + 1].position, t);
+        }
     }
 }

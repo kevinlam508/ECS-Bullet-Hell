@@ -43,4 +43,14 @@ public static class BezierUtility{
 		}
 		return angle;
 	}
+
+	public static bool HasLoop(int loopIndex, int length){
+		return loopIndex >= 0 && loopIndex < length - 1;
+	}
+
+	// returns wether a value is in bound based on the loop index and length
+	public static bool IsInBound(float val, int loopIndex, int length){
+		return (val < length - 1 && !HasLoop(loopIndex, length)) 
+			|| (val < length && HasLoop(loopIndex, length));
+	}
 }

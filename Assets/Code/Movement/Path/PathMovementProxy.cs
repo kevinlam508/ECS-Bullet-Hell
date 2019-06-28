@@ -572,6 +572,7 @@ public class PathMovementProxy : MonoBehaviour, IConvertGameObjectToEntity
 			points[startIdx + 1].position, t);
 	}
 
+	// returns the tangent at the poitn on the curve between startIdx and startIdx + 1
 	public Vector3 TangentAt(int startIdx, float t){
 		if(!HasLoop && startIdx >= NumPoints - 1){
 			Debug.LogError("Invalid startIdx: " + startIdx + " in TangentAt");
@@ -657,7 +658,8 @@ public class PathMovementProxy : MonoBehaviour, IConvertGameObjectToEntity
 		int timeIdx = TimePassedUtility.AddDefault(entity, dstManager);
 		dstManager.AddComponentData(entity, new PathMovement{ 
 				timeIdx = timeIdx,
-				speed = speed
+				speed = speed,
+				loopIndex = loopIndex
 			});
 	}
 }
@@ -672,4 +674,5 @@ public struct PathPoint : IBufferElementData{
 public struct PathMovement : IComponentData{
 	public int timeIdx;
 	public float speed;
+	public int loopIndex;
 }
