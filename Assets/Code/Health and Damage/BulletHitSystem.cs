@@ -178,8 +178,7 @@ public class BulletHitSystem : JobComponentSystem
     }
 
     // other systems
-    EndSimulationEntityCommandBufferSystem commandBufferSystem;
-    ParticleRequestSystem partReqSystem;
+    BeginInitializationEntityCommandBufferSystem commandBufferSystem;
 
     // phys systems set callbacks up with
     BuildPhysicsWorld buildPhysWorld;
@@ -197,11 +196,12 @@ public class BulletHitSystem : JobComponentSystem
     // physics layer masks
     uint[] masks;
 
+    JobHandle job;
+
     protected override void OnCreateManager()
     {
         // get other systems
-        commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
-        partReqSystem = World.GetOrCreateSystem<ParticleRequestSystem>();
+        commandBufferSystem = World.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
         buildPhysWorld = World.GetOrCreateSystem<BuildPhysicsWorld>();
         stepPhysWorld = World.GetOrCreateSystem<StepPhysicsWorld>();
 
@@ -250,6 +250,7 @@ public class BulletHitSystem : JobComponentSystem
     }
 
     private void DisposeContainers(){
+
         foreach(KeyValuePair<ObjectType, NativeMultiHashMap<Entity, CollisionInfo>> pair in collisions){
             if(pair.Value.IsCreated){
                 pair.Value.Dispose();
@@ -263,8 +264,9 @@ public class BulletHitSystem : JobComponentSystem
         }
     }
 
-    protected override void OnStopRunning()
-    {
+    protected override void OnStopRunning(){
+        // ensure job is done before disposing containers
+        job.Complete();
         DisposeContainers();
     }
 
@@ -283,6 +285,7 @@ public class BulletHitSystem : JobComponentSystem
                 ref world, deps, ObjectType.Enemy, ObjectType.PlayerBullet);
 
             JobHandle processJob = InitProcessJobs(playerToBulletCollect, enemyToBulletCollect);
+            job = processJob;
             return processJob;
         };
 

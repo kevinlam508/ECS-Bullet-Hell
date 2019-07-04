@@ -45,7 +45,7 @@ public static class BezierUtility{
 	}
 
 	public static bool HasLoop(int loopIndex, int length){
-		return loopIndex >= 0 && loopIndex < length - 1;
+		return loopIndex >= 0 && loopIndex <= length - 1;
 	}
 
 	// returns wether a value is in bound based on the loop index and length

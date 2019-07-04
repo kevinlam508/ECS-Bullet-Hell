@@ -35,6 +35,8 @@ public class PathMovementProxy : MonoBehaviour, IConvertGameObjectToEntity
 
 	[Tooltip("The point to go to after reaching the end, a negative number or a number beyond the number of points means no looping")]
 	public int loopIndex = -1;
+
+	[Tooltip("Avoid having tangents overlap points if the point is not at the end")]
 	public List<Point> points = new List<Point>();
 
 	public int NumPoints => points.Count;
@@ -97,13 +99,18 @@ public class PathMovementProxy : MonoBehaviour, IConvertGameObjectToEntity
 			Debug.LogError(idx + " is out of bounds");
 		}
 
+		// shift loop index to keep it on the same point
+		if(idx <= loopIndex){
+			++loopIndex;
+		}
+
 		// make a new point if one isn't provided
 		Point newPoint = (p == null) ? new Point() : new Point(p);
 		if(p == null){
 			if(NumPoints == 0){
-				newPoint.position = Vector3.zero;
-				newPoint.inTangent = Vector3.left;
-				newPoint.outTangent = Vector3.right;
+				newPoint.position = gameObject.transform.position;
+				newPoint.inTangent = newPoint.position + Vector3.left;
+				newPoint.outTangent = newPoint.position + Vector3.right;
 			}
 			// add to front
 			else if(idx == 0){

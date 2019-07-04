@@ -61,10 +61,11 @@ public class AutoShootSystem : JobComponentSystem{
     		if(shoot.started == 0 && timePassed.time > shoot.startDelay){
     			shoot.started++;
     			timePassed.time -= shoot.startDelay;
+                timePassed.time += shoot.period;
     		}
 
             // fire until below period
-            while(shoot.started != 0 && timePassed.time > shoot.period){
+            while(shoot.started != 0 && timePassed.time >= shoot.period){
                 // shoot the pattern
                 // buffers commands to do after thread completes
                 Fire(ent, index, ref position, ref rotation, ref shoot, ref timePassed);
@@ -125,11 +126,13 @@ public class AutoShootSystem : JobComponentSystem{
         }
 	}
 
-	private EndSimulationEntityCommandBufferSystem commandBufferSystem;
+    // there are multiple CommandBufferSystems and the one used will affect 
+    //   when, relative to other systems, the commands are played back
+	private BeginInitializationEntityCommandBufferSystem commandBufferSystem;
     private EntityQuery shooters;
 
     protected override void OnCreateManager(){
-        commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+        commandBufferSystem = World.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
 
         // shooters will have all entities with Timealive, Translation, 
         //    Rotation, and AutoShoot

@@ -36,7 +36,7 @@ public class ParticleRequestSystem : ComponentSystem
 
     // request processing
 	EntityQuery requests;
-    EndSimulationEntityCommandBufferSystem commandBufferSystem;
+    BeginInitializationEntityCommandBufferSystem commandBufferSystem;
 
     // lazy object pool for particles
     string[] particleNames = {
@@ -47,7 +47,7 @@ public class ParticleRequestSystem : ComponentSystem
 
 	protected override void OnCreateManager(){
 
-        commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+        commandBufferSystem = World.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
 
         requests = GetEntityQuery(new EntityQueryDesc{
                 All = new ComponentType[]{

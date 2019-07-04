@@ -32,7 +32,7 @@ public class PathMovementSystem : JobComponentSystem{
     	return pathJob;
     }
 
-    [BurstCompile]
+    //[BurstCompile]
     struct PathMovementJob : IJobForEachWithEntity<PathMovement, Translation>{
 
     	public float dt;
@@ -46,16 +46,18 @@ public class PathMovementSystem : JobComponentSystem{
     	public void Execute(Entity ent, int idx, [ReadOnly] ref PathMovement pathData,
     			ref Translation pos){
     		DynamicBuffer<PathPoint> points = pointBuffers[ent];
-    		DynamicBuffer<TimePassed> timeBuffer = timeBuffers[ent];
+            if(points.Length > 0){
+        		DynamicBuffer<TimePassed> timeBuffer = timeBuffers[ent];
 
-    		// compute update
-    		TimePassed curScale = timeBuffer[pathData.timeIdx];
-    		float3 nextPos = EvalConstantSpeed(ref points, ref curScale.time,
-    			pathData.speed, pathData.loopIndex);
+        		// compute update
+        		TimePassed curScale = timeBuffer[pathData.timeIdx];
+        		float3 nextPos = EvalConstantSpeed(ref points, ref curScale.time,
+        			pathData.speed, pathData.loopIndex);
 
-    		// update components
-    		timeBuffer[pathData.timeIdx] = curScale;
-    		pos.Value = nextPos;
+        		// update components
+        		timeBuffer[pathData.timeIdx] = curScale;
+        		pos.Value = nextPos;
+            }
     	}
 
     	private float3 EvalConstantSpeed(ref DynamicBuffer<PathPoint> points, 
@@ -64,7 +66,7 @@ public class PathMovementSystem : JobComponentSystem{
 
     		// approx ideal about to move on scale
     		float travelDist = speed * dt;
-			int numSubsteps = 10;
+			int numSubsteps = 50;
 		    int leftIdx = (int)math.floor(curScale);
 			for(int i = 0; i < numSubsteps && BezierUtility.IsInBound(curScale, loopIndex, points.Length); ++i){
 		    	float localT = curScale - leftIdx;

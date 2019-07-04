@@ -12,11 +12,11 @@ using CustomConstants;			   // Constants
 
 public class PlayerShootSystem : JobComponentSystem
 {
-	private EndSimulationEntityCommandBufferSystem commandBufferSystem;
+	private BeginInitializationEntityCommandBufferSystem commandBufferSystem;
     private EntityQuery players;
 
 	protected override void OnCreateManager(){
-        commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+        commandBufferSystem = World.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
 
         // get entities that define players
         players = GetEntityQuery(new EntityQueryDesc{

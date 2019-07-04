@@ -85,7 +85,7 @@ public class PathInspector : Editor
         }
         if(GUILayout.Button("Delete Selected") && path.HasSelected){
 	        Undo.RecordObject(path, "Deleting points");
-            for(int i = path.NumPoints - 1; i > 0; --i){
+            for(int i = path.NumPoints - 1; i >= 0; --i){
             	if(path[i].isSelected){
             		path.DeletePoint(i);
 	            	EditorUtility.SetDirty(path);
@@ -380,16 +380,17 @@ public class PathInspector : Editor
             time -= path.NumPoints;
             time += path.loopIndex;
         }
-    	float radAngle = path.AngleAt((int)Mathf.Floor(time), time - Mathf.Floor(time));
+    	// float radAngle = path.AngleAt((int)Mathf.Floor(time), time - Mathf.Floor(time));
 
-    	// extra 90 degrees in rotation to make the forward vector front facing
-    	trans.rotation = Quaternion.AngleAxis((Mathf.Rad2Deg * radAngle) - 90f, 
-    		Vector3.forward);
+    	// // extra 90 degrees in rotation to make the forward vector front facing
+    	// trans.rotation = Quaternion.AngleAxis((Mathf.Rad2Deg * radAngle) - 90f, 
+    	// 	Vector3.forward);
 
     	trans.position = path.EvalConstantSpeed(ref time, Time.deltaTime);
     	trans.hasChanged = false;
     }
 
+    // stores the object state and add the update function to the editor's update
     private void StartUpdate(){
     	time = 0;
     	trans = ((PathMovementProxy)target).gameObject.transform;
@@ -399,6 +400,7 @@ public class PathInspector : Editor
     	EditorApplication.update += Update;
     }
 
+    // resets the object and removes the update function from the editor's update
     private void StopUpdate(){
     	trans.position = origPos;
     	trans.rotation = origRot;

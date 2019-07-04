@@ -108,10 +108,10 @@ public class BoundarySystem : JobComponentSystem{
 
     private BoundUtil util;
 
-    private EndSimulationEntityCommandBufferSystem commandBufferSystem;
+    private BeginInitializationEntityCommandBufferSystem commandBufferSystem;
 
     protected override void OnCreateManager(){
-        commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+        commandBufferSystem = World.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
 
         // will have all entities with Translation and BoundMarkerIn
         keepInBound = GetEntityQuery(new EntityQueryDesc{

@@ -24,7 +24,7 @@ public class WaveManager : MonoBehaviour
 		WaveSpawningSystem spawnSystem = World.Active.GetOrCreateSystem<WaveSpawningSystem>();
 		if(waves.Count > 0){
 			spawnSystem.AddWaves(waves);
-			spawnSystem.ResetWaves();
+			spawnSystem.ResetTime();
 			spawnSystem.Enabled = true;
 
 			// fix spawner exiting

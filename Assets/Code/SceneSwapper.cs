@@ -41,15 +41,15 @@ public class SceneSwapper : MonoBehaviour
             Debug.LogWarning("Scene index out of bounds: " + sceneIdx);
         }
 
-        // handle any scene exiting events if they exist
-        if(OnSceneExit != null){
-            OnSceneExit();
-        }
-
         EntityManager entManager = World.Active.EntityManager;
 
         // end all jobs
         entManager.CompleteAllJobs();
+
+        // handle any scene exiting events if they exist
+        if(OnSceneExit != null){
+            OnSceneExit();
+        }
 
         // delete all existing entites
         NativeArray<Entity> ents = entManager.GetAllEntities();
