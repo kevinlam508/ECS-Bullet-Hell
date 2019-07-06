@@ -20,6 +20,10 @@ using CustomConstants;             // Constants
  *   pattern: pattern to duplicate the object
  *   count: number of bullets in a volley
  *   centerAngle: angle from facing to offset pattern center
+ *  Aiming
+ *   aimStyle:
+ *     Forward: based on facing direction
+ *     Player:  based on direct to player
  *   angle: depends on pattern
  *     FAN: total angle of the fan, ignored if count == 1
  *     AROUND: ignored
@@ -27,15 +31,12 @@ using CustomConstants;             // Constants
 
 public class AutoShootSystem : JobComponentSystem{
 	public enum ShotPattern { FAN, AROUND }
-    public enum AimStyle { 
-        Forward, // based on facing direction
-        Player   // based on direct to player
-    }
+    public enum AimStyle { Forward, Player }
 
     // still can't be burst compiled since job adds components using
     //   commandbuffer
     //[BurstCompile]
-	struct AutoShootJob : IJobForEachWithEntity<Translation, Rotation, AutoShoot>{
+	struct AutoShootJob : IJobForEachWithEntity<Translation, Rotation>{
 
         // stores creates to do after job finishes
         public EntityCommandBuffer.Concurrent commandBuffer;
@@ -53,51 +54,54 @@ public class AutoShootSystem : JobComponentSystem{
         public BufferFromEntity<TimePassed> timePassedBuffers;
 
         [ReadOnly]
+        public BufferFromEntity<AutoShootBuffer> autoShootBuffers;
+
+        [ReadOnly]
         public NativeArray<Translation> playerPos;
 
         // mark args as ReadOnly as much as possible
 		public void Execute(Entity ent, int index, [ReadOnly] ref Translation position, 
-				[ReadOnly] ref Rotation rotation, [ReadOnly] ref AutoShoot shoot){
+				[ReadOnly] ref Rotation rotation){
 
-            // getting the right TimePassed
+            DynamicBuffer<AutoShootBuffer> shootBuffer = autoShootBuffers[ent];
             DynamicBuffer<TimePassed> buffer = timePassedBuffers[ent];
-            TimePassed timePassed = buffer[shoot.timeIdx];
-            TimePassed volleyCount = buffer[shoot.volleyCountIdx];
-            timePassed.time += dt;
+            for(int i = 0; i < shootBuffer.Length; ++i){
+                AutoShoot shoot = shootBuffer[i].val;
 
-    		// check and update delay
-    		if(shoot.started == 0 && timePassed.time > shoot.startDelay){
-    			shoot.started++;
-    			timePassed.time -= shoot.startDelay;
-                timePassed.time += shoot.period;
-    		}
+                // getting the right TimePassed
+                TimePassed timePassed = buffer[shoot.timeIdx];
+                TimePassed volleyCount = buffer[shoot.volleyCountIdx];
+                timePassed.time += dt;
 
-            // EXTRA: add recovery for bullets not fired exactly when they should
-            if(shoot.started != 0){
+                if(timePassed.time > shoot.startDelay){
+                    float actualTime = timePassed.time - shoot.startDelay;
 
-                // fire if above period and not on cooldown
-                if(timePassed.time >= shoot.period && volleyCount.time < shoot.numVolleys){
-                    // shoot the pattern
-                    Fire(ent, index, ref position, ref rotation, ref shoot, ref timePassed);
-                    timePassed.time -= shoot.period;
-                    volleyCount.time += 1;
+                    // EXTRA: add recovery for bullets not fired exactly when they should
+                    // fire if above period and not on cooldown
+                    while(actualTime >= shoot.period && volleyCount.time < shoot.numVolleys){
+                        // shoot the pattern
+                        Fire(ent, index, ref position, ref rotation, ref shoot, actualTime);
+                        timePassed.time -= shoot.period;
+                        volleyCount.time += 1;
+                        actualTime = timePassed.time - shoot.startDelay;
+                    }
+
+                    // on cooldown, wait for time to pass to reset
+                    if(actualTime >= shoot.cooldownDuration){
+                        volleyCount.time = 0;
+                        timePassed.time -= shoot.cooldownDuration;
+                    }
                 }
 
-                // on cooldown, wait for time to pass to reset
-                if(timePassed.time >= shoot.cooldownDuration){
-                    volleyCount.time = 0;
-                    timePassed.time -= shoot.cooldownDuration;
-                }
+                // writing updates out
+                buffer[shoot.timeIdx] = timePassed;
+                buffer[shoot.volleyCountIdx] = volleyCount;
             }
-
-            // writing updates out
-            buffer[shoot.timeIdx] = timePassed;
-            buffer[shoot.volleyCountIdx] = volleyCount;
 		}
 
         // angleOffset is additional rotation clockwise from facing direction
         private void CreateBullet(int index, [ReadOnly] ref Translation position,
-                [ReadOnly] ref Rotation rotation, Entity bullet,
+                float3 shooterForward, Entity bullet,
                 quaternion fireDirection, float angleOffset){
             // buffers commands to do after thread completes
             Entity entity = commandBuffer.Instantiate(index, bullet);
@@ -109,24 +113,23 @@ public class AutoShootSystem : JobComponentSystem{
             commandBuffer.SetComponent(index, entity, 
                 new Rotation {Value = math.mul(
                     fireDirection,
-                    quaternion.AxisAngle(
-                        math.forward(rotation.Value), 
-                        angleOffset))
+                    quaternion.AxisAngle(shooterForward, angleOffset))
                 });
         }
 
         private void Fire(Entity ent, int index, [ReadOnly] ref Translation position, 
                 [ReadOnly] ref Rotation rotation, [ReadOnly] ref AutoShoot shoot,
-                ref TimePassed timePassed){
+                float time){
             float interval;
             quaternion fireDirection = quaternion.identity;
+            float3 shooterForward = math.forward(rotation.Value);
             switch(shoot.aimStyle){
                 case AimStyle.Forward:
                     fireDirection = math.normalize(rotation.Value);
                     break;
                 case AimStyle.Player:
                     fireDirection = quaternion.LookRotation(
-                        math.forward(rotation.Value), 
+                        shooterForward, 
                         math.normalize(playerPos[index % playerPos.Length].Value - position.Value));
                     break;
             }
@@ -134,7 +137,7 @@ public class AutoShootSystem : JobComponentSystem{
             switch(shoot.pattern){
                 case ShotPattern.FAN:
                     if(shoot.count == 1){
-                        CreateBullet(index, ref position, ref rotation,
+                        CreateBullet(index, ref position, shooterForward,
                             shoot.bullet, fireDirection, shoot.centerAngle);
                     }
                     else{
@@ -143,7 +146,7 @@ public class AutoShootSystem : JobComponentSystem{
                         interval = shoot.angle / (shoot.count - 1);
                         float halfAngle = shoot.angle / 2;
                         for(float rad = -halfAngle; rad <= halfAngle; rad += interval){
-                            CreateBullet(index, ref position, ref rotation,
+                            CreateBullet(index, ref position, shooterForward,
                                 shoot.bullet, fireDirection, rad + shoot.centerAngle);
                         }
                     }
@@ -152,7 +155,7 @@ public class AutoShootSystem : JobComponentSystem{
                 case ShotPattern.AROUND:
                     interval = (float)(2 * math.PI / shoot.count);
                     for(float rad = 0.0f; rad < 2 * math.PI; rad += interval){
-                        CreateBullet(index, ref position, ref rotation,
+                        CreateBullet(index, ref position, shooterForward,
                             shoot.bullet, fireDirection, rad + shoot.centerAngle);
                     }
                     break;
@@ -178,7 +181,7 @@ public class AutoShootSystem : JobComponentSystem{
                     typeof(TimePassed), 
                     ComponentType.ReadOnly<Translation>(),
                     ComponentType.ReadOnly<Rotation>(),
-                    ComponentType.ReadOnly<AutoShoot>()
+                    ComponentType.ReadOnly<AutoShootBuffer>()
                 }
             });
         players = GetEntityQuery(new EntityQueryDesc{
@@ -201,6 +204,7 @@ public class AutoShootSystem : JobComponentSystem{
         	dt = Time.deltaTime,
             bulletHeight = Constants.ENEMY_BULLET_HEIGHT,
             timePassedBuffers = GetBufferFromEntity<TimePassed>(false),
+            autoShootBuffers = GetBufferFromEntity<AutoShootBuffer>(true),
             playerPos = playerPos
         }.Schedule(shooters, handle);
 

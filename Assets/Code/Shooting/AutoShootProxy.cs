@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using Unity.Entities;                  // IComponentData, IConvertGameObjectToEntity
+using Unity.Entities;                  // IComponentData, IConvertGameObjectToEntity, IBufferElementData
 using Unity.Mathematics;               // math
 using UnityEngine;
 using UnityEngine.Assertions;          // Assert
@@ -12,7 +12,6 @@ public struct AutoShoot : IComponentData{
 
     // timing data
 	public float startDelay;
-	public int started;
 	public float period;
     public float cooldownDuration;
 
@@ -30,17 +29,14 @@ public struct AutoShoot : IComponentData{
     public int volleyCountIdx;
 }
 
+public struct AutoShootBuffer : IBufferElementData{
+    public AutoShoot val;
+}
+
+[DisallowMultipleComponent]
 [RequiresEntityConversion]
 public class AutoShootProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvertGameObjectToEntity
 {	
-
-    // init cache and add to scene leaving events
-    public static Dictionary<GameObject, Dictionary<BulletMovementData, Dictionary<BulletDamageData, Entity>>> prefabCache;
-    static AutoShootProxy(){
-        prefabCache = new Dictionary<GameObject, Dictionary<BulletMovementData, Dictionary<BulletDamageData, Entity>>>();
-        SceneSwapper.OnSceneExit += prefabCache.Clear;
-    }
-
     [Header("Timing")]
 	[Tooltip("Time in seconds before the first fire")]
 	public float startDelay;
@@ -78,15 +74,10 @@ public class AutoShootProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvert
 
     private Entity GetBulletEntity(EntityManager dstManager, 
             GameObjectConversionSystem conversionSystem){
-        Entity ent = Entity.Null;
+        Entity ent = AutoShootUtility.GetBullet(bullet, movementStats, damageStats);
 
-        // already in cache, just get it
-        if(prefabCache.ContainsKey(bullet) && prefabCache[bullet].ContainsKey(movementStats) 
-                && prefabCache[bullet][movementStats].ContainsKey(damageStats)){
-            ent = prefabCache[bullet][movementStats][damageStats];
-        }
         // not in cache, make it and add to cache
-        else{
+        if(ent == Entity.Null){
             ent = (conversionSystem.HasPrimaryEntity(bullet)) 
                 ? conversionSystem.GetPrimaryEntity(bullet)
                 : conversionSystem.CreateAdditionalEntity(bullet);
@@ -94,14 +85,7 @@ public class AutoShootProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvert
             dstManager.SetComponentData(ent, damageStats.ToBulletDamage());
             dstManager.AddComponentData(ent, new Prefab());
 
-
-            if(!prefabCache.ContainsKey(bullet)){
-                prefabCache.Add(bullet, new Dictionary<BulletMovementData, Dictionary<BulletDamageData, Entity>>());
-            }
-            if(!prefabCache[bullet].ContainsKey(movementStats)){
-                prefabCache[bullet].Add(movementStats, new Dictionary<BulletDamageData, Entity>());
-            }
-            prefabCache[bullet][movementStats].Add(damageStats, ent);
+            AutoShootUtility.AddBullet(bullet, movementStats, damageStats, ent);
         }
 
         return ent;
@@ -124,7 +108,6 @@ public class AutoShootProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvert
             bullet = bulletEnt,
             startDelay = startDelay,
             cooldownDuration = cooldownDuration,
-            started = 0,
             period = period,
             pattern = pattern,
             count = count,
@@ -135,7 +118,9 @@ public class AutoShootProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvert
             timeIdx = timeIdx,
             volleyCountIdx = volleyCountIdx
         };
-        dstManager.AddComponentData(entity, shootData);
 
+        DynamicBuffer<AutoShootBuffer> buffer = AutoShootUtility.GetOrAddBuffer(entity, dstManager);
+        buffer.Add(new AutoShootBuffer{ val = shootData });
     }
+
 }

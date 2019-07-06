@@ -19,25 +19,25 @@ MonoBehaviour:
     inTangent: {x: -8.466287, y: 2.2724218, z: 0}
     outTangent: {x: -3.7080495, y: 1.0186534, z: 0}
     makeSmoothTangent: 1
-    controlId: 15813
+    controlId: 13921
     isSelected: 1
   - position: {x: -2.2400045, y: 4.1614437, z: 0}
     inTangent: {x: -2.9400442, y: 3.4473407, z: 0}
     outTangent: {x: -0.8286643, y: 5.601137, z: 0}
     makeSmoothTangent: 1
-    controlId: 15814
+    controlId: 13922
     isSelected: 0
   - position: {x: 3.313096, y: 3.6609292, z: 0}
     inTangent: {x: 3.1801748, y: 4.652057, z: 0}
     outTangent: {x: 3.4904134, y: 2.3387613, z: 0}
     makeSmoothTangent: 1
-    controlId: 15815
+    controlId: 13923
     isSelected: 0
   - position: {x: 0.61, y: 1.28, z: 0}
     inTangent: {x: -3.416293, y: 2.7490745, z: 0}
     outTangent: {x: 1.61, y: 1.28, z: 0}
     makeSmoothTangent: 0
-    controlId: 15816
+    controlId: 15269
     isSelected: 0
 --- !u!114 &3287101576770382722
 MonoBehaviour:
@@ -176,7 +176,7 @@ PrefabInstance:
     - target: {fileID: 3630166197402292945, guid: 4fbfb0de66cda1e42b0b01cdaaa8e49d,
         type: 3}
       propertyPath: period
-      value: 1000
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 3630166197402292945, guid: 4fbfb0de66cda1e42b0b01cdaaa8e49d,
         type: 3}
@@ -197,6 +197,16 @@ PrefabInstance:
     - target: {fileID: 3630166197402292945, guid: 4fbfb0de66cda1e42b0b01cdaaa8e49d,
         type: 3}
       propertyPath: pattern
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3630166197402292945, guid: 4fbfb0de66cda1e42b0b01cdaaa8e49d,
+        type: 3}
+      propertyPath: cooldownDuration
+      value: 1000
+      objectReference: {fileID: 0}
+    - target: {fileID: 3630166197402292945, guid: 4fbfb0de66cda1e42b0b01cdaaa8e49d,
+        type: 3}
+      propertyPath: numVolleys
       value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []

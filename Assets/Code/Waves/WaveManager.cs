@@ -17,21 +17,26 @@ public class WaveManager : MonoBehaviour
 	}
 
 	[SerializeField] private List<WaveData> waves = new List<WaveData>();
+	private WaveSpawningSystem spawnSystem;
 
 	void Awake(){
 
 		// init waves for spawn system
-		WaveSpawningSystem spawnSystem = World.Active.GetOrCreateSystem<WaveSpawningSystem>();
+		spawnSystem = World.Active.GetOrCreateSystem<WaveSpawningSystem>();
 		if(waves.Count > 0){
 			spawnSystem.AddWaves(waves);
 			spawnSystem.ResetTime();
 			spawnSystem.Enabled = true;
 
-			// fix spawner exiting
-			SceneSwapper.OnSceneExit += () => { spawnSystem.Enabled = false; };
-			SceneSwapper.OnSceneExit += spawnSystem.ClearWaves;
-			Destroy(gameObject);
+			// fix spawner exitings
+			SceneSwapper.OnSceneExit += SceneExit;
 		}
+	}
 
+	private void SceneExit(){
+		spawnSystem.Enabled = false;
+		spawnSystem.ClearWaves();
+
+		SceneSwapper.OnSceneExit -= SceneExit;
 	}
 }
