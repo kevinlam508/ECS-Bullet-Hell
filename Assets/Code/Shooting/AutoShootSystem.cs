@@ -29,6 +29,8 @@ using CustomConstants;             // Constants
  *     AROUND: ignored
  */
 
+// EXTRA: if the job is slowing down the game, convert the job to work
+//    on a per AutoShoot basis rather than a per entity basis
 public class AutoShootSystem : JobComponentSystem{
 	public enum ShotPattern { FAN, AROUND }
     public enum AimStyle { Forward, Player }
@@ -57,6 +59,7 @@ public class AutoShootSystem : JobComponentSystem{
         public BufferFromEntity<AutoShootBuffer> autoShootBuffers;
 
         [ReadOnly]
+        [DeallocateOnJobCompletion]
         public NativeArray<Translation> playerPos;
 
         // mark args as ReadOnly as much as possible
@@ -81,13 +84,13 @@ public class AutoShootSystem : JobComponentSystem{
                     while(actualTime >= shoot.period && volleyCount.time < shoot.numVolleys){
                         // shoot the pattern
                         Fire(ent, index, ref position, ref rotation, ref shoot, actualTime);
-                        timePassed.time -= shoot.period;
                         volleyCount.time += 1;
+                        timePassed.time -= shoot.period;
                         actualTime = timePassed.time - shoot.startDelay;
                     }
 
                     // on cooldown, wait for time to pass to reset
-                    if(actualTime >= shoot.cooldownDuration){
+                    if(actualTime >= shoot.cooldownDuration && volleyCount.time == shoot.numVolleys){
                         volleyCount.time = 0;
                         timePassed.time -= shoot.cooldownDuration;
                     }
@@ -101,8 +104,8 @@ public class AutoShootSystem : JobComponentSystem{
 
         // angleOffset is additional rotation clockwise from facing direction
         private void CreateBullet(int index, [ReadOnly] ref Translation position,
-                float3 shooterForward, Entity bullet,
-                quaternion fireDirection, float angleOffset){
+                float3 shooterForward, Entity bullet, quaternion fireDirection, 
+                float angleOffset){
             // buffers commands to do after thread completes
             Entity entity = commandBuffer.Instantiate(index, bullet);
             commandBuffer.SetComponent(index, entity, 
@@ -168,7 +171,6 @@ public class AutoShootSystem : JobComponentSystem{
 	private BeginInitializationEntityCommandBufferSystem commandBufferSystem;
     private EntityQuery shooters;
     private EntityQuery players;
-    private NativeArray<Translation> playerPos;
 
     protected override void OnCreateManager(){
         commandBufferSystem = World.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
@@ -193,9 +195,6 @@ public class AutoShootSystem : JobComponentSystem{
     }
 
 	protected override JobHandle OnUpdate(JobHandle handle){
-
-        DisposeContainers();
-        playerPos = players.ToComponentDataArray<Translation>(Allocator.TempJob);
         EntityCommandBuffer.Concurrent buffer = commandBufferSystem.CreateCommandBuffer().ToConcurrent();
 
         // init job and run it on entities in the shooters group
@@ -205,7 +204,7 @@ public class AutoShootSystem : JobComponentSystem{
             bulletHeight = Constants.ENEMY_BULLET_HEIGHT,
             timePassedBuffers = GetBufferFromEntity<TimePassed>(false),
             autoShootBuffers = GetBufferFromEntity<AutoShootBuffer>(true),
-            playerPos = playerPos
+            playerPos = players.ToComponentDataArray<Translation>(Allocator.TempJob)
         }.Schedule(shooters, handle);
 
         // tells buffer systems to wait for the job to finish, then
@@ -213,15 +212,5 @@ public class AutoShootSystem : JobComponentSystem{
         commandBufferSystem.AddJobHandleForProducer(jobHandle);
 
         return jobHandle;
-    }
-
-    private void DisposeContainers(){
-        if(playerPos.IsCreated){
-            playerPos.Dispose();
-        }
-    }
-
-    protected override void OnStopRunning(){
-        DisposeContainers();
     }
 }

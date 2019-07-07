@@ -53,13 +53,29 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   startDelay: 0
   period: 0.1
+  cooldownDuration: 2
   pattern: 0
-  movementStats: {fileID: 11400000, guid: 5c6fcaf10cd38f147b134a282c8351fe, type: 2}
+  movementStats: {fileID: 11400000, guid: 84064428b1c4b88448d722ba62dc5f7d, type: 2}
   damageStats: {fileID: 11400000, guid: 07c23f40c3544be43a97ea011ff6b7d8, type: 2}
   bullet: {fileID: 316492841909355860, guid: 04139a3bbcc09e0428e8ef555bde8d01, type: 3}
-  count: 1
-  angle: 20
-  centerAngle: 62
+  count: 2
+  numVolleys: 45
+  angle: 90
+  aimStyle: 1
+  centerAngle: 0
+  patterns:
+  - startDelay: 0
+    period: 0.1
+    cooldownDuration: 2
+    pattern: 0
+    movementStats: {fileID: 11400000, guid: 84064428b1c4b88448d722ba62dc5f7d, type: 2}
+    damageStats: {fileID: 11400000, guid: 07c23f40c3544be43a97ea011ff6b7d8, type: 2}
+    bullet: {fileID: 316492841909355860, guid: 04139a3bbcc09e0428e8ef555bde8d01, type: 3}
+    count: 2
+    numVolleys: 45
+    angle: 90
+    aimStyle: 1
+    centerAngle: 0
 --- !u!114 &4485524592475101399
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -33,13 +33,13 @@ MonoBehaviour:
     inTangent: {x: -1, y: 9.083069, z: 0}
     outTangent: {x: 0.018411875, y: 8.043741, z: 0}
     makeSmoothTangent: 0
-    controlId: 13921
+    controlId: 25703
     isSelected: 0
   - position: {x: 0, y: 3.0899153, z: 0}
     inTangent: {x: 0, y: 5.0899153, z: 0}
     outTangent: {x: 1, y: 3.0899153, z: 0}
     makeSmoothTangent: 0
-    controlId: 13922
+    controlId: 25704
     isSelected: 1
 --- !u!1 &7011976019305173451
 GameObject:
@@ -189,6 +189,31 @@ PrefabInstance:
         type: 3}
       propertyPath: numVolleys
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3630166197402292945, guid: 4fbfb0de66cda1e42b0b01cdaaa8e49d,
+        type: 3}
+      propertyPath: patterns.Array.data[0].period
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 3630166197402292945, guid: 4fbfb0de66cda1e42b0b01cdaaa8e49d,
+        type: 3}
+      propertyPath: patterns.Array.data[0].count
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 3630166197402292945, guid: 4fbfb0de66cda1e42b0b01cdaaa8e49d,
+        type: 3}
+      propertyPath: patterns.Array.data[0].numVolleys
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3630166197402292945, guid: 4fbfb0de66cda1e42b0b01cdaaa8e49d,
+        type: 3}
+      propertyPath: patterns.Array.data[0].angle
+      value: 70
+      objectReference: {fileID: 0}
+    - target: {fileID: 3630166197402292945, guid: 4fbfb0de66cda1e42b0b01cdaaa8e49d,
+        type: 3}
+      propertyPath: patterns.Array.data[0].aimStyle
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 4fbfb0de66cda1e42b0b01cdaaa8e49d, type: 3}

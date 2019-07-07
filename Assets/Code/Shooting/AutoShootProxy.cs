@@ -29,24 +29,18 @@ public struct AutoShoot : IComponentData{
     public int volleyCountIdx;
 }
 
-public struct AutoShootBuffer : IBufferElementData{
-    public AutoShoot val;
-}
-
-[DisallowMultipleComponent]
-[RequiresEntityConversion]
-public class AutoShootProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvertGameObjectToEntity
-{	
+[Serializable]
+public struct AutoShootData{
     [Header("Timing")]
-	[Tooltip("Time in seconds before the first fire")]
-	public float startDelay;
-	[Tooltip("Time in seconds between volleys")]
-	public float period;
+    [Tooltip("Time in seconds before the first fire")]
+    public float startDelay;
+    [Tooltip("Time in seconds between volleys")]
+    public float period;
     [Tooltip("Time in seconds to wait after firing a set of volleys")]
     public float cooldownDuration;
 
     [Header("Volley")]
-	public AutoShootSystem.ShotPattern pattern;
+    public AutoShootSystem.ShotPattern pattern;
     [Tooltip("Stats on the bullet's movement")]
     public BulletMovementData movementStats;
     [Tooltip("Stats on the bullet's damage")]
@@ -121,6 +115,32 @@ public class AutoShootProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvert
 
         DynamicBuffer<AutoShootBuffer> buffer = AutoShootUtility.GetOrAddBuffer(entity, dstManager);
         buffer.Add(new AutoShootBuffer{ val = shootData });
+    }
+}
+
+public struct AutoShootBuffer : IBufferElementData{
+    public AutoShoot val;
+}
+
+[DisallowMultipleComponent]
+[RequiresEntityConversion]
+public class AutoShootProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvertGameObjectToEntity
+{	
+    public List<AutoShootData> patterns;
+
+    // Referenced prefabs have to be declared so that the conversion system knows about them ahead of time
+    public void DeclareReferencedPrefabs(List<GameObject> gameObjects){
+        foreach(AutoShootData data in patterns){
+            data.DeclareReferencedPrefabs(gameObjects);
+        }
+    }
+
+    // Lets you convert the editor data representation to the entity optimal runtime representation
+    public void Convert(Entity entity, EntityManager dstManager, 
+            GameObjectConversionSystem conversionSystem){
+        foreach(AutoShootData data in patterns){
+            data.Convert(entity, dstManager, conversionSystem);
+        }
     }
 
 }

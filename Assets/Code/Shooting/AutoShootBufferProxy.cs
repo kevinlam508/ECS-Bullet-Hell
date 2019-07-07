@@ -2,25 +2,21 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.Entities;                  // IComponentData, IConvertGameObjectToEntity, IBufferElementData
+using Unity.Mathematics;               // math
+using UnityEngine.Assertions;          // Assert
+using System;						   // Serializable
 
 [DisallowMultipleComponent]
 [RequiresEntityConversion]
 public class AutoShootBufferProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvertGameObjectToEntity
 {
 	// TODO: implement nonmonohavior version of AutoShootProxy
-	// [SerializeField]
-	// public List<AutoShootProxy> shots;
+	public List<AutoShootData> shots;
 
- //    public void DeclareReferencedPrefabs(List<GameObject> gameObjects){
- //        foreach(AutoShootProxy shoot in shots){
- //        	shoot.DeclareReferencedPrefabs(gameObjects);
- //        }
- //    }
+    public void DeclareReferencedPrefabs(List<GameObject> gameObjects){
+    }
 
- //    public void Convert(Entity entity, EntityManager dstManager, 
- //            GameObjectConversionSystem conversionSystem){
- //        foreach(AutoShootProxy shoot in shots){
- //        	shoot.Convert(entity, dstManager, conversionSystem);
- //        }
- //    }
+    public void Convert(Entity entity, EntityManager dstManager, 
+            GameObjectConversionSystem conversionSystem){
+    }
 }

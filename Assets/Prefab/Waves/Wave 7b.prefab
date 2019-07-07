@@ -67,37 +67,37 @@ MonoBehaviour:
     inTangent: {x: -7.2795496, y: 4.77122, z: 0}
     outTangent: {x: -2.7641368, y: -0.29433775, z: 0}
     makeSmoothTangent: 1
-    controlId: 13921
+    controlId: 25703
     isSelected: 0
   - position: {x: 1.3776232, y: -0.06031561, z: 0}
     inTangent: {x: 0.67959356, y: -0.7763844, z: 0}
     outTangent: {x: 3.6116457, y: 2.2314408, z: 0}
     makeSmoothTangent: 1
-    controlId: 13922
+    controlId: 25704
     isSelected: 0
   - position: {x: 0.09490383, y: 1.4210293, z: 0}
     inTangent: {x: 0.83596456, y: 1.7647368, z: 0}
     outTangent: {x: -0.6880288, y: 1.0579015, z: 0}
     makeSmoothTangent: 1
-    controlId: 13923
+    controlId: 25965
     isSelected: 0
   - position: {x: -0.22266865, y: -0.16198969, z: 0}
     inTangent: {x: -1.1956506, y: 0.068888396, z: 0}
     outTangent: {x: 1.0755993, y: -0.47005463, z: 0}
     makeSmoothTangent: 1
-    controlId: 15269
+    controlId: 26916
     isSelected: 0
   - position: {x: 2.8000329, y: 1.3484128, z: 0}
     inTangent: {x: 2.0443113, y: 1.1285703, z: 0}
     outTangent: {x: 3.7013698, y: 1.6106153, z: 0}
     makeSmoothTangent: 1
-    controlId: 15701
+    controlId: 27191
     isSelected: 1
   - position: {x: 3.64, y: 0.20000033, z: 0}
     inTangent: {x: 2.64, y: 0.20000033, z: 0}
     outTangent: {x: 4.6400003, y: 0.20000033, z: 0}
     makeSmoothTangent: 0
-    controlId: 15702
+    controlId: 27192
     isSelected: 0
 --- !u!114 &5649679624060624957
 MonoBehaviour:
@@ -220,6 +220,46 @@ PrefabInstance:
         type: 3}
       propertyPath: numVolleys
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3630166197402292945, guid: 4fbfb0de66cda1e42b0b01cdaaa8e49d,
+        type: 3}
+      propertyPath: patterns.Array.data[0].startDelay
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 3630166197402292945, guid: 4fbfb0de66cda1e42b0b01cdaaa8e49d,
+        type: 3}
+      propertyPath: patterns.Array.data[0].period
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3630166197402292945, guid: 4fbfb0de66cda1e42b0b01cdaaa8e49d,
+        type: 3}
+      propertyPath: patterns.Array.data[0].cooldownDuration
+      value: 1000
+      objectReference: {fileID: 0}
+    - target: {fileID: 3630166197402292945, guid: 4fbfb0de66cda1e42b0b01cdaaa8e49d,
+        type: 3}
+      propertyPath: patterns.Array.data[0].pattern
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3630166197402292945, guid: 4fbfb0de66cda1e42b0b01cdaaa8e49d,
+        type: 3}
+      propertyPath: patterns.Array.data[0].count
+      value: 16
+      objectReference: {fileID: 0}
+    - target: {fileID: 3630166197402292945, guid: 4fbfb0de66cda1e42b0b01cdaaa8e49d,
+        type: 3}
+      propertyPath: patterns.Array.data[0].numVolleys
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3630166197402292945, guid: 4fbfb0de66cda1e42b0b01cdaaa8e49d,
+        type: 3}
+      propertyPath: patterns.Array.data[0].angle
+      value: 360
+      objectReference: {fileID: 0}
+    - target: {fileID: 3630166197402292945, guid: 4fbfb0de66cda1e42b0b01cdaaa8e49d,
+        type: 3}
+      propertyPath: patterns.Array.data[0].aimStyle
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 4fbfb0de66cda1e42b0b01cdaaa8e49d, type: 3}

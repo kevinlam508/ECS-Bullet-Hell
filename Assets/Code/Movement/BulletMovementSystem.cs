@@ -39,16 +39,9 @@ public class BulletMovementSystem : JobComponentSystem{
 	}
 
     protected override JobHandle OnUpdate(JobHandle handle){
-    	// get and store the first entity, so NativeArray isn't made every frame
-    	if(!EntityManager.Exists(player) && playerGroup.CalculateLength() > 0){
-    		NativeArray<Entity> ents = playerGroup.ToEntityArray(Allocator.TempJob);
-    		player = ents[0];
-    		ents.Dispose();
-    	}
 
     	SetPhysVelJob velJob = new SetPhysVelJob{
-    		playerPos = (EntityManager.Exists(player)) ? EntityManager.GetComponentData<Translation>(player)
-    			: new Translation{Value = new float3(0, 0, 0)}
+    		playerPositions = playerGroup.ToComponentDataArray<Translation>(Allocator.TempJob)
     	};
     	return velJob.Schedule(physBullets, handle);
     }
@@ -66,14 +59,23 @@ public class BulletMovementSystem : JobComponentSystem{
 
 	// only operators on the listed components
 	[BurstCompile]
-	struct SetPhysVelJob : IJobForEach<BulletMovement, PhysicsVelocity, Translation, Rotation>{
+	struct SetPhysVelJob : IJobForEachWithEntity<BulletMovement, PhysicsVelocity, Translation, Rotation>{
 
-		public Translation playerPos;
+		[ReadOnly]
+		[DeallocateOnJobCompletion]
+		public NativeArray<Translation> playerPositions;
 
-		public void Execute([ReadOnly] ref BulletMovement bm, ref PhysicsVelocity vel,
+		public void Execute(Entity ent, int idx, [ReadOnly] ref BulletMovement bm, ref PhysicsVelocity vel,
 				[ReadOnly] ref Translation pos, [ReadOnly] ref Rotation rotation){
+
+			// the % does nothing for single player, but will distribute the homing 
+			//    for multiplayer
+			float3 playerPos = (playerPositions.Length > 0) 
+				? playerPositions[idx % playerPositions.Length].Value
+				: new float3(0, 0, 0);
+
 			float3 forward = MoveUtility.up(rotation.Value);
-			float3 bulletToPlayer = math.normalize(playerPos.Value - pos.Value);
+			float3 bulletToPlayer = math.normalize(playerPos - pos.Value);
 
 			vel.Linear = math.normalize(forward) * bm.moveSpeed;
 			float3 angularVel = new float3(0, 0, 0);
