@@ -31,6 +31,9 @@ using CustomConstants;             // Constants
 
 // EXTRA: if the job is slowing down the game, convert the job to work
 //    on a per AutoShoot basis rather than a per entity basis
+//    requirements:
+//        multihashmap of entity - autoshoot pairs to run the job on
+//        hashmap of entity - pos/rot to reach from
 public class AutoShootSystem : JobComponentSystem{
 	public enum ShotPattern { FAN, AROUND }
     public enum AimStyle { Forward, Player }
@@ -42,11 +45,7 @@ public class AutoShootSystem : JobComponentSystem{
 
         // stores creates to do after job finishes
         public EntityCommandBuffer.Concurrent commandBuffer;
-
-        // timing to allow consistent sim
 		public float dt;
-
-        // height to put bullets on
         public float bulletHeight;
 
         // buffers of TimePassed for all entities
@@ -57,10 +56,16 @@ public class AutoShootSystem : JobComponentSystem{
 
         [ReadOnly]
         public BufferFromEntity<AutoShootBuffer> autoShootBuffers;
-
         [ReadOnly]
         [DeallocateOnJobCompletion]
-        public NativeArray<Translation> playerPos;
+        public NativeArray<Translation> playerPositions;
+
+        // stats of the bullet to set after creating
+        [ReadOnly]
+        public NativeList<BulletMovement> bulletMovementStats;
+        [ReadOnly]
+        public NativeList<BulletDamage> bulletDamageStats;
+        public float fixedDT;
 
         // mark args as ReadOnly as much as possible
 		public void Execute(Entity ent, int index, [ReadOnly] ref Translation position, 
@@ -103,21 +108,30 @@ public class AutoShootSystem : JobComponentSystem{
 		}
 
         // angleOffset is additional rotation clockwise from facing direction
-        private void CreateBullet(int index, [ReadOnly] ref Translation position,
-                float3 shooterForward, Entity bullet, quaternion fireDirection, 
-                float angleOffset){
+        // timeOffset is how much time to simulate the movement
+        private void CreateBullet(int index, Entity bullet, float3 pos,
+            quaternion rot, int moveIdx, int damageIdx){
+
             // buffers commands to do after thread completes
             Entity entity = commandBuffer.Instantiate(index, bullet);
-            commandBuffer.SetComponent(index, entity, 
-                new Translation {Value = new float3(
-                    position.Value.x,
-                    position.Value.y,
-                    bulletHeight)});
-            commandBuffer.SetComponent(index, entity, 
-                new Rotation {Value = math.mul(
-                    fireDirection,
-                    quaternion.AxisAngle(shooterForward, angleOffset))
-                });
+            commandBuffer.SetComponent(index, entity, new Translation {Value = pos});
+            commandBuffer.SetComponent(index, entity, new Rotation {Value = rot});
+            commandBuffer.SetComponent(index, entity, bulletMovementStats[moveIdx]);
+            commandBuffer.SetComponent(index, entity, bulletDamageStats[damageIdx]);
+        }
+
+        private void InitBulletPosRot(ref Translation position,
+                float3 shooterForward, quaternion fireDirection, 
+                float angleOffset, float timeOffset, int moveIdx,
+                float3 playerPos, out float3 pos, out quaternion rot){
+
+            // compute position and rotation simulated over timeOffset
+            pos = new float3(position.Value.x, position.Value.y, bulletHeight);
+            rot = math.normalize(math.mul(fireDirection,
+                quaternion.AxisAngle(shooterForward, angleOffset)));
+            BulletMovement moveStats = bulletMovementStats[moveIdx];
+            BulletMovementSystem.MoveUtility.SimulateMovement(ref pos, ref rot,
+                moveStats, timeOffset, fixedDT, playerPos);
         }
 
         private void Fire(Entity ent, int index, [ReadOnly] ref Translation position, 
@@ -126,22 +140,33 @@ public class AutoShootSystem : JobComponentSystem{
             float interval;
             quaternion fireDirection = quaternion.identity;
             float3 shooterForward = math.forward(rotation.Value);
+            float3 playerPos = (playerPositions.Length > 0) 
+                ? playerPositions[ent.Index % playerPositions.Length].Value
+                : new float3(0, 0, 0);
             switch(shoot.aimStyle){
                 case AimStyle.Forward:
                     fireDirection = math.normalize(rotation.Value);
                     break;
                 case AimStyle.Player:
-                    fireDirection = quaternion.LookRotation(
-                        shooterForward, 
-                        math.normalize(playerPos[index % playerPos.Length].Value - position.Value));
+                    if(playerPositions.Length > 0){
+                        fireDirection = quaternion.LookRotation(
+                            shooterForward, 
+                            math.normalize(playerPos - position.Value));
+                    }
+                    else{ // no player targets, just use rotation
+                        fireDirection = math.normalize(rotation.Value);
+                    }
                     break;
             }
 
             switch(shoot.pattern){
                 case ShotPattern.FAN:
                     if(shoot.count == 1){
-                        CreateBullet(index, ref position, shooterForward,
-                            shoot.bullet, fireDirection, shoot.centerAngle);
+                        InitBulletPosRot(ref position, shooterForward, fireDirection,
+                            shoot.centerAngle, time - shoot.period, shoot.moveStatsIdx,
+                            playerPos, out float3 pos, out quaternion rot);
+                        CreateBullet(index, shoot.bullet, pos, rot,
+                            shoot.moveStatsIdx, shoot.damageStatsIdx);
                     }
                     else{
                         // space between shots is angle / (count - 1) to have 
@@ -149,8 +174,11 @@ public class AutoShootSystem : JobComponentSystem{
                         interval = shoot.angle / (shoot.count - 1);
                         float halfAngle = shoot.angle / 2;
                         for(float rad = -halfAngle; rad <= halfAngle; rad += interval){
-                            CreateBullet(index, ref position, shooterForward,
-                                shoot.bullet, fireDirection, rad + shoot.centerAngle);
+                            InitBulletPosRot(ref position, shooterForward, fireDirection,
+                                rad + shoot.centerAngle, time - shoot.period, shoot.moveStatsIdx,
+                                playerPos, out float3 pos, out quaternion rot);
+                            CreateBullet(index, shoot.bullet, pos, rot,
+                                shoot.moveStatsIdx, shoot.damageStatsIdx);
                         }
                     }
                     break;
@@ -158,8 +186,11 @@ public class AutoShootSystem : JobComponentSystem{
                 case ShotPattern.AROUND:
                     interval = (float)(2 * math.PI / shoot.count);
                     for(float rad = 0.0f; rad < 2 * math.PI; rad += interval){
-                        CreateBullet(index, ref position, shooterForward,
-                            shoot.bullet, fireDirection, rad + shoot.centerAngle);
+                        InitBulletPosRot(ref position, shooterForward, fireDirection,
+                            rad + shoot.centerAngle, time - shoot.period, shoot.moveStatsIdx,
+                            playerPos, out float3 pos, out quaternion rot);
+                        CreateBullet(index, shoot.bullet, pos, rot,
+                            shoot.moveStatsIdx, shoot.damageStatsIdx);
                     }
                     break;
             }
@@ -191,7 +222,11 @@ public class AutoShootSystem : JobComponentSystem{
                     typeof(Player), 
                     ComponentType.ReadOnly<Translation>()
                 }
-            }); 
+            });
+    }
+
+    protected override void OnDestroy(){
+        AutoShootUtility.ClearCaches();
     }
 
 	protected override JobHandle OnUpdate(JobHandle handle){
@@ -204,7 +239,11 @@ public class AutoShootSystem : JobComponentSystem{
             bulletHeight = Constants.ENEMY_BULLET_HEIGHT,
             timePassedBuffers = GetBufferFromEntity<TimePassed>(false),
             autoShootBuffers = GetBufferFromEntity<AutoShootBuffer>(true),
-            playerPos = players.ToComponentDataArray<Translation>(Allocator.TempJob)
+
+            playerPositions = players.ToComponentDataArray<Translation>(Allocator.TempJob),
+            bulletMovementStats = AutoShootUtility.movementStatsCache,
+            bulletDamageStats = AutoShootUtility.damageStatsCache,
+            fixedDT = Time.fixedDeltaTime
         }.Schedule(shooters, handle);
 
         // tells buffer systems to wait for the job to finish, then

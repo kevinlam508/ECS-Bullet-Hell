@@ -27,6 +27,10 @@ public struct AutoShoot : IComponentData{
     // buffer data
     public int timeIdx;
     public int volleyCountIdx;
+
+    // bullet stats data
+    public int moveStatsIdx;
+    public int damageStatsIdx;
 }
 
 [Serializable]
@@ -66,25 +70,6 @@ public struct AutoShootData{
         gameObjects.Add(bullet);
     }
 
-    private Entity GetBulletEntity(EntityManager dstManager, 
-            GameObjectConversionSystem conversionSystem){
-        Entity ent = AutoShootUtility.GetBullet(bullet, movementStats, damageStats);
-
-        // not in cache, make it and add to cache
-        if(ent == Entity.Null){
-            ent = (conversionSystem.HasPrimaryEntity(bullet)) 
-                ? conversionSystem.GetPrimaryEntity(bullet)
-                : conversionSystem.CreateAdditionalEntity(bullet);
-            dstManager.SetComponentData(ent, movementStats.ToBulletMovement());
-            dstManager.SetComponentData(ent, damageStats.ToBulletDamage());
-            dstManager.AddComponentData(ent, new Prefab());
-
-            AutoShootUtility.AddBullet(bullet, movementStats, damageStats, ent);
-        }
-
-        return ent;
-    }
-
     // Lets you convert the editor data representation to the entity optimal runtime representation
     public void Convert(Entity entity, EntityManager dstManager, 
             GameObjectConversionSystem conversionSystem){
@@ -94,7 +79,7 @@ public struct AutoShootData{
         int timeIdx = TimePassedUtility.AddDefault(entity, dstManager);
         int volleyCountIdx = TimePassedUtility.AddDefault(entity, dstManager);
 
-        Entity bulletEnt =  GetBulletEntity(dstManager, conversionSystem);
+        Entity bulletEnt = conversionSystem.GetPrimaryEntity(bullet);
         AutoShoot shootData = new AutoShoot
         {
             // The referenced prefab will already be converted due to DeclareReferencedPrefabs.
@@ -105,12 +90,17 @@ public struct AutoShootData{
             period = period,
             pattern = pattern,
             count = count,
+
             numVolleys = numVolleys,
             angle = math.radians(angle),
             aimStyle = aimStyle,
             centerAngle = math.radians(centerAngle),
+
             timeIdx = timeIdx,
-            volleyCountIdx = volleyCountIdx
+            volleyCountIdx = volleyCountIdx,
+
+            moveStatsIdx = AutoShootUtility.GetOrAddMovementIdx(movementStats),
+            damageStatsIdx = AutoShootUtility.GetOrAddDamageIdx(damageStats)
         };
 
         DynamicBuffer<AutoShootBuffer> buffer = AutoShootUtility.GetOrAddBuffer(entity, dstManager);

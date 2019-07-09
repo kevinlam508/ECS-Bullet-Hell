@@ -47,13 +47,68 @@ public class BulletMovementSystem : JobComponentSystem{
     }
 
 
-	static class MoveUtility{
+	public static class MoveUtility{
 
-		public static float3 up(quaternion q){
+		public static float3 Up(quaternion q){
 			return new float3(
 				2 * (q.value.x*q.value.y - q.value.w*q.value.z),
 				1 - 2 * (q.value.x*q.value.x + q.value.z*q.value.z),
 				2 * (q.value.y*q.value.z + q.value.w*q.value.x));
+		}
+
+		// returns the rotation speed given the type of movement
+		public static float GetRotationSpeed(MoveType type, float rotationSpeedStat, 
+				float3 forward, float3 bulletToPlayer){
+			float res = 0;
+			switch(type){
+				case MoveType.CURVE:
+					res = rotationSpeedStat;
+					break;
+				case MoveType.HOMING:
+					float dot = math.dot(forward, bulletToPlayer);
+					if(dot != 0){
+						float angle = math.acos(dot);
+						float3 cross = math.cross(forward, bulletToPlayer);
+						float finalSpeed = math.lerp(
+							0,
+							rotationSpeedStat,
+							angle / math.PI);
+						res = math.sign(cross.z) * finalSpeed;
+					}
+					break;
+			}
+
+			return res;
+		}
+
+		public static void SimulateStep(ref float3 pos, ref quaternion rot,
+				BulletMovement movementStats, float dt, float3 playerPos){
+			float3 forward = Up(rot);
+			float3 linMovement = forward * movementStats.moveSpeed * dt;
+
+			// update position after rotation so that rotation speed that
+			//   relies on position is unaffected
+			Integrator.IntegrateOrientation(ref rot, 
+				new float3(0, 0, GetRotationSpeed(movementStats.moveType, 
+					movementStats.moveSpeed, forward, math.normalize(playerPos - pos))),
+				dt);
+			pos += linMovement;
+		}
+
+		// simulates moving for time amount of time
+		public static void SimulateMovement(ref float3 pos, ref quaternion rot,
+				BulletMovement movementStats, float time, float dt,
+				float3 playerPos){
+			// forward euler using dt sized steps
+			while(time > dt){
+				SimulateStep(ref pos, ref rot, movementStats, dt, playerPos);
+				time -= dt;
+			}
+
+			// again with anything remaining
+			if(time > 0){
+				SimulateStep(ref pos, ref rot, movementStats, time, playerPos);
+			}
 		}
 	}
 
@@ -71,33 +126,14 @@ public class BulletMovementSystem : JobComponentSystem{
 			// the % does nothing for single player, but will distribute the homing 
 			//    for multiplayer
 			float3 playerPos = (playerPositions.Length > 0) 
-				? playerPositions[idx % playerPositions.Length].Value
+				? playerPositions[ent.Index % playerPositions.Length].Value
 				: new float3(0, 0, 0);
 
-			float3 forward = MoveUtility.up(rotation.Value);
-			float3 bulletToPlayer = math.normalize(playerPos - pos.Value);
-
-			vel.Linear = math.normalize(forward) * bm.moveSpeed;
-			float3 angularVel = new float3(0, 0, 0);
-			switch(bm.moveType){
-				case MoveType.CURVE:
-					angularVel.z = bm.rotateSpeed;
-					break;
-				case MoveType.HOMING:
-					float dot = math.dot(forward, bulletToPlayer);
-					if(dot != 0){
-						float angle = math.acos(dot);
-						float3 cross = math.cross(forward, bulletToPlayer);
-						float finalSpeed = math.lerp(
-							0,
-							bm.rotateSpeed,
-							angle / math.PI);
-						angularVel.z = math.sign(cross.z) 
-							* finalSpeed;
-					}
-					break;
-			}
-			vel.Angular = angularVel;
+			float3 forward = MoveUtility.Up(rotation.Value);
+			vel.Linear = forward * bm.moveSpeed;
+			vel.Angular = new float3(0, 0,
+				MoveUtility.GetRotationSpeed(bm.moveType, bm.rotateSpeed,
+					forward, math.normalize(playerPos - pos.Value)));
 		}
 	}
 }

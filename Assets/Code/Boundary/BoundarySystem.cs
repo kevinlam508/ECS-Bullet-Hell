@@ -1,12 +1,14 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using Unity.Entities;
-using Unity.Jobs;
-using Unity.Transforms;
-using Unity.Mathematics;
-using Unity.Burst;
-using Unity.Collections;
+using Unity.Entities;					// ComponentSystem
+using Unity.Jobs;						// IJob*
+using Unity.Transforms;					// Translation
+using Unity.Mathematics;				// math
+using Unity.Burst;						// BurstCompile
+using Unity.Collections;				// NativeArray
+
+using System.Runtime.CompilerServices;  // MethodImpl
 
 
 [UpdateAfter(typeof(BulletMovementSystem))]
@@ -18,48 +20,106 @@ public class BoundarySystem : JobComponentSystem{
 		DeleteOutside
 	};
 
-	struct BoundUtil{
-		public float top, bottom, left, right;
+	static class BoundUtil{
 
-		public bool IsAboveTop(float val){
-			return val > top;
+		enum Directions{ Top, Right, Bottom, Left }
+
+		public static void InitBounds(NativeArray<Translation> markers, NativeArray<float> bounds){
+			for(int i = 0; i < markers.Length; ++i){
+				if(markers[i].Value.y > bounds[(int)Directions.Top]){
+					bounds[(int)Directions.Top] = markers[i].Value.y;
+				}
+				if(markers[i].Value.y < bounds[(int)Directions.Bottom]){
+					bounds[(int)Directions.Bottom] = markers[i].Value.y;
+				}
+				if(markers[i].Value.x > bounds[(int)Directions.Right]){
+					bounds[(int)Directions.Right] = markers[i].Value.x;
+				}
+				if(markers[i].Value.x < bounds[(int)Directions.Left]){
+					bounds[(int)Directions.Left] = markers[i].Value.x;
+				}
+			}
 		}
 
-		public bool IsBelowBottom(float val){
-			return val < bottom;
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static float Top(NativeArray<float> bounds){
+			return bounds[(int)Directions.Top];
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static float Bottom(NativeArray<float> bounds){
+			return bounds[(int)Directions.Bottom];
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static float Left(NativeArray<float> bounds){
+			return bounds[(int)Directions.Left];
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static float Right(NativeArray<float> bounds){
+			return bounds[(int)Directions.Right];
 		}
 
-		public bool IsBelowLeft(float val){
-			return val < left;
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool IsAboveTop(NativeArray<float> bounds, float val){
+			return val > Top(bounds);
 		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool IsBelowBottom(NativeArray<float> bounds, float val){
+			return val < Bottom(bounds);
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool IsBelowLeft(NativeArray<float> bounds, float val){
+			return val < Left(bounds);
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool IsAboveRight(NativeArray<float> bounds, float val){
+			return val > Right(bounds);
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool IsOutOfBounds(NativeArray<float> bounds, float x, float y){
+			return IsAboveRight(bounds, x) || IsBelowLeft(bounds, x) 
+				|| IsAboveTop(bounds, y) || IsBelowBottom(bounds, y);
+		}
+	}
 
-		public bool IsAboveRight(float val){
-			return val > right;
-		}
+	struct InitBoundsJob : IJob{
+        [DeallocateOnJobCompletion]
+		[ReadOnly]
+		public NativeArray<Translation> markers;
 
-		public bool IsOutOfBounds(float x, float y){
-			return IsAboveRight(x) || IsBelowLeft(x) || IsAboveTop(y)
-				|| IsBelowBottom(y);
+        [NativeDisableParallelForRestriction]
+		public NativeArray<float> bounds;
+
+		public void Execute(){
+			BoundUtil.InitBounds(markers, bounds);
 		}
+	}
+
+	[BurstCompile]
+	struct DeleteArrayJob : IJob{
+        [DeallocateOnJobCompletion]
+        public NativeArray<float> array;
+
+		public void Execute(){}
 	}
 
     [BurstCompile]
 	struct KeepInBoundJob : IJobForEach<Translation>{
 
-		public BoundUtil util;
+        [ReadOnly]
+		public NativeArray<float> bounds;
 
 		public void Execute(ref Translation trans){
-			if(util.IsAboveTop(trans.Value.y)){
-				trans.Value.y = util.top;
+			if(BoundUtil.IsAboveTop(bounds, trans.Value.y)){
+				trans.Value.y = BoundUtil.Top(bounds);
 			}
-			if(util.IsBelowBottom(trans.Value.y)){
-				trans.Value.y = util.bottom;
+			if(BoundUtil.IsBelowBottom(bounds, trans.Value.y)){
+				trans.Value.y = BoundUtil.Bottom(bounds);
 			}
-			if(util.IsAboveRight(trans.Value.x)){
-				trans.Value.x = util.right;
+			if(BoundUtil.IsAboveRight(bounds, trans.Value.x)){
+				trans.Value.x = BoundUtil.Right(bounds);
 			}
-			if(util.IsBelowLeft(trans.Value.x)){
-				trans.Value.x = util.left;
+			if(BoundUtil.IsBelowLeft(bounds, trans.Value.x)){
+				trans.Value.x = BoundUtil.Left(bounds);
 			}
 		}
 	}
@@ -70,10 +130,12 @@ public class BoundarySystem : JobComponentSystem{
 
         // stores creates to do after job finishes
         public EntityCommandBuffer.Concurrent commandBuffer;
-		public BoundUtil util;
+
+        [ReadOnly]
+		public NativeArray<float> bounds;
 
 		public void Execute(Entity ent, int idx, [ReadOnly] ref Translation trans){
-			if(util.IsOutOfBounds(trans.Value.x, trans.Value.y)){
+			if(BoundUtil.IsOutOfBounds(bounds, trans.Value.x, trans.Value.y)){
 				commandBuffer.DestroyEntity(idx, ent);
 			}
 		}
@@ -81,11 +143,13 @@ public class BoundarySystem : JobComponentSystem{
 
 	struct ConvertOnEntryJob : IJobForEachWithEntity<Translation, BoundMarkerConvert>{
 		public EntityCommandBuffer.Concurrent commandBuffer;
-		public BoundUtil util;
+
+        [ReadOnly]
+		public NativeArray<float> bounds;
 
 		public void Execute(Entity ent, int idx, [ReadOnly] ref Translation trans,
 				[ReadOnly] ref BoundMarkerConvert convert){
-			if(!util.IsOutOfBounds(trans.Value.x, trans.Value.y)){
+			if(!BoundUtil.IsOutOfBounds(bounds, trans.Value.x, trans.Value.y)){
 				commandBuffer.RemoveComponent(idx, ent, typeof(BoundMarkerConvert));
 
 				// add new marker
@@ -105,8 +169,6 @@ public class BoundarySystem : JobComponentSystem{
     private EntityQuery deleteOnBound;
     private EntityQuery convertInBound;
     private EntityQuery edgeMarkers;
-
-    private BoundUtil util;
 
     private BeginInitializationEntityCommandBufferSystem commandBufferSystem;
 
@@ -147,57 +209,36 @@ public class BoundarySystem : JobComponentSystem{
 
     }
 
-    private void InitBounds(){
-		NativeArray<Translation> bounds = edgeMarkers
-			.ToComponentDataArray<Translation>(Allocator.TempJob);
-		float top, bottom, right, left;
-		top = right = float.MinValue;
-		bottom = left = float.MaxValue;
-		for(int i = 0; i < bounds.Length; ++i){
-			if(bounds[i].Value.y > top){
-				top = bounds[i].Value.y;
-			}
-			if(bounds[i].Value.y < bottom){
-				bottom = bounds[i].Value.y;
-			}
-			if(bounds[i].Value.x > right){
-				right = bounds[i].Value.x;
-			}
-			if(bounds[i].Value.x < left){
-				left = bounds[i].Value.x;
-			}
-		}
-		bounds.Dispose();
-
-		util = new BoundUtil{
-				top = top,
-				bottom = bottom,
-				left = left,
-				right = right
-			};
-    }
-
 	protected override JobHandle OnUpdate(JobHandle handle){
-        InitBounds();
+        NativeArray<float> bounds = new NativeArray<float>(4, Allocator.TempJob);
+
+        JobHandle initJob = new InitBoundsJob(){
+        	markers = edgeMarkers.ToComponentDataArray<Translation>(Allocator.TempJob),
+        	bounds = bounds
+        }.Schedule(handle);
 
 		JobHandle inBoundJob = new KeepInBoundJob(){
-			util = util
-		}.Schedule(keepInBound, handle);
+			bounds = bounds
+		}.Schedule(keepInBound, initJob);
 
 		// both use the same buffer, so one needs to finish before the other starts
 		EntityCommandBuffer.Concurrent buffer = commandBufferSystem.CreateCommandBuffer().ToConcurrent();
 		JobHandle deleteJob = new DeleteOutOfBoundJob(){
 			commandBuffer = buffer,
-			util = util
+			bounds = bounds
 		}.Schedule(deleteOnBound, inBoundJob);
 		JobHandle convertJob = new ConvertOnEntryJob{
 			commandBuffer = buffer,
-			util = util
+			bounds = bounds
 		}.Schedule(convertInBound, deleteJob);
 
         // tell bufferSystem to wait for the process job, then it'll perform
         // buffered commands
         commandBufferSystem.AddJobHandleForProducer(convertJob);
-        return convertJob;
+
+        JobHandle deleteArrayJob = new DeleteArrayJob{
+        	array = bounds
+        }.Schedule(convertJob);
+        return deleteArrayJob;
     }
 }
