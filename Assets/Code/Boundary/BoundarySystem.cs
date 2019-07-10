@@ -24,6 +24,12 @@ public class BoundarySystem : JobComponentSystem{
 
 		enum Directions{ Top, Right, Bottom, Left }
 
+		public static void DefaultBounds(NativeArray<float> bounds){
+			bounds[(int)Directions.Top] = bounds[(int)Directions.Right] = float.MinValue;
+			bounds[(int)Directions.Bottom] = bounds[(int)Directions.Left] = float.MaxValue;
+
+		}
+
 		public static void InitBounds(NativeArray<Translation> markers, NativeArray<float> bounds){
 			for(int i = 0; i < markers.Length; ++i){
 				if(markers[i].Value.y > bounds[(int)Directions.Top]){
@@ -38,6 +44,21 @@ public class BoundarySystem : JobComponentSystem{
 				if(markers[i].Value.x < bounds[(int)Directions.Left]){
 					bounds[(int)Directions.Left] = markers[i].Value.x;
 				}
+			}
+		}
+
+		public static void UpdateBounds(Translation pos, NativeArray<float> bounds){
+			if(pos.Value.y > bounds[(int)Directions.Top]){
+				bounds[(int)Directions.Top] = pos.Value.y;
+			}
+			if(pos.Value.y < bounds[(int)Directions.Bottom]){
+				bounds[(int)Directions.Bottom] = pos.Value.y;
+			}
+			if(pos.Value.x > bounds[(int)Directions.Right]){
+				bounds[(int)Directions.Right] = pos.Value.x;
+			}
+			if(pos.Value.x < bounds[(int)Directions.Left]){
+				bounds[(int)Directions.Left] = pos.Value.x;
 			}
 		}
 
@@ -81,16 +102,16 @@ public class BoundarySystem : JobComponentSystem{
 		}
 	}
 
-	struct InitBoundsJob : IJob{
-        [DeallocateOnJobCompletion]
-		[ReadOnly]
-		public NativeArray<Translation> markers;
+	struct InitBoundsJob : IJobForEachWithEntity<Translation>{
 
         [NativeDisableParallelForRestriction]
 		public NativeArray<float> bounds;
 
-		public void Execute(){
-			BoundUtil.InitBounds(markers, bounds);
+		public void Execute(Entity ent, int idx, [ReadOnly] ref Translation pos){
+			if(idx == 0){
+				BoundUtil.DefaultBounds(bounds);
+			}
+			BoundUtil.UpdateBounds(pos, bounds);
 		}
 	}
 
@@ -213,9 +234,8 @@ public class BoundarySystem : JobComponentSystem{
         NativeArray<float> bounds = new NativeArray<float>(4, Allocator.TempJob);
 
         JobHandle initJob = new InitBoundsJob(){
-        	markers = edgeMarkers.ToComponentDataArray<Translation>(Allocator.TempJob),
         	bounds = bounds
-        }.Schedule(handle);
+        }.ScheduleSingle(edgeMarkers, handle);
 
 		JobHandle inBoundJob = new KeepInBoundJob(){
 			bounds = bounds

@@ -16,6 +16,7 @@ public struct AutoShoot : IComponentData{
     public float cooldownDuration;
 
     // volley data
+    public float3 sourceOffset;
 	public AutoShootSystem.ShotPattern pattern;
 	public Entity bullet;
     public int count;
@@ -44,6 +45,8 @@ public struct AutoShootData{
     public float cooldownDuration;
 
     [Header("Volley")]
+    [Tooltip("Offset from the shooter's center for where the bullets will spawn")]
+    public Vector2 sourceOffset;
     public AutoShootSystem.ShotPattern pattern;
     [Tooltip("Stats on the bullet's movement")]
     public BulletMovementData movementStats;
@@ -91,6 +94,7 @@ public struct AutoShootData{
             pattern = pattern,
             count = count,
 
+            sourceOffset = new float3(sourceOffset.x, sourceOffset.y, 0),
             numVolleys = numVolleys,
             angle = math.radians(angle),
             aimStyle = aimStyle,

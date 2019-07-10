@@ -120,13 +120,13 @@ public class AutoShootSystem : JobComponentSystem{
             commandBuffer.SetComponent(index, entity, bulletDamageStats[damageIdx]);
         }
 
-        private void InitBulletPosRot(ref Translation position,
+        private void InitBulletPosRot(float3 spawnLocation,
                 float3 shooterForward, quaternion fireDirection, 
                 float angleOffset, float timeOffset, int moveIdx,
                 float3 playerPos, out float3 pos, out quaternion rot){
 
             // compute position and rotation simulated over timeOffset
-            pos = new float3(position.Value.x, position.Value.y, bulletHeight);
+            pos = new float3(spawnLocation.x, spawnLocation.y, bulletHeight);
             rot = math.normalize(math.mul(fireDirection,
                 quaternion.AxisAngle(shooterForward, angleOffset)));
             BulletMovement moveStats = bulletMovementStats[moveIdx];
@@ -140,6 +140,7 @@ public class AutoShootSystem : JobComponentSystem{
             float interval;
             quaternion fireDirection = quaternion.identity;
             float3 shooterForward = math.forward(rotation.Value);
+            float3 spawnPos = position.Value + shoot.sourceOffset;
             float3 playerPos = (playerPositions.Length > 0) 
                 ? playerPositions[ent.Index % playerPositions.Length].Value
                 : new float3(0, 0, 0);
@@ -151,7 +152,7 @@ public class AutoShootSystem : JobComponentSystem{
                     if(playerPositions.Length > 0){
                         fireDirection = quaternion.LookRotation(
                             shooterForward, 
-                            math.normalize(playerPos - position.Value));
+                            math.normalize(playerPos - spawnPos));
                     }
                     else{ // no player targets, just use rotation
                         fireDirection = math.normalize(rotation.Value);
@@ -162,8 +163,8 @@ public class AutoShootSystem : JobComponentSystem{
             switch(shoot.pattern){
                 case ShotPattern.FAN:
                     if(shoot.count == 1){
-                        InitBulletPosRot(ref position, shooterForward, fireDirection,
-                            shoot.centerAngle, time - shoot.period, shoot.moveStatsIdx,
+                        InitBulletPosRot(spawnPos, shooterForward, fireDirection, 
+                            shoot.centerAngle, time - shoot.period, shoot.moveStatsIdx, 
                             playerPos, out float3 pos, out quaternion rot);
                         CreateBullet(index, shoot.bullet, pos, rot,
                             shoot.moveStatsIdx, shoot.damageStatsIdx);
@@ -174,9 +175,9 @@ public class AutoShootSystem : JobComponentSystem{
                         interval = shoot.angle / (shoot.count - 1);
                         float halfAngle = shoot.angle / 2;
                         for(float rad = -halfAngle; rad <= halfAngle; rad += interval){
-                            InitBulletPosRot(ref position, shooterForward, fireDirection,
-                                rad + shoot.centerAngle, time - shoot.period, shoot.moveStatsIdx,
-                                playerPos, out float3 pos, out quaternion rot);
+                            InitBulletPosRot(spawnPos, shooterForward, fireDirection, 
+                                rad + shoot.centerAngle, time - shoot.period, 
+                                shoot.moveStatsIdx, playerPos, out float3 pos, out quaternion rot);
                             CreateBullet(index, shoot.bullet, pos, rot,
                                 shoot.moveStatsIdx, shoot.damageStatsIdx);
                         }
@@ -186,9 +187,9 @@ public class AutoShootSystem : JobComponentSystem{
                 case ShotPattern.AROUND:
                     interval = (float)(2 * math.PI / shoot.count);
                     for(float rad = 0.0f; rad < 2 * math.PI; rad += interval){
-                        InitBulletPosRot(ref position, shooterForward, fireDirection,
-                            rad + shoot.centerAngle, time - shoot.period, shoot.moveStatsIdx,
-                            playerPos, out float3 pos, out quaternion rot);
+                        InitBulletPosRot(spawnPos, shooterForward, fireDirection, 
+                            rad + shoot.centerAngle, time - shoot.period, 
+                            shoot.moveStatsIdx, playerPos, out float3 pos, out quaternion rot);
                         CreateBullet(index, shoot.bullet, pos, rot,
                             shoot.moveStatsIdx, shoot.damageStatsIdx);
                     }

@@ -301,8 +301,7 @@ public class BulletHitSystem : JobComponentSystem
 
         // first arg is max capacity, setting as max possible collision pairs
         collisions[target] = new NativeMultiHashMap<Entity, CollisionInfo>(
-            groups[(int)bullet].CalculateLength() 
-                * groups[(int)ObjectType.Player].CalculateLength(), 
+            groups[(int)bullet].CalculateLength() * groups[(int)target].CalculateLength(), 
             Allocator.TempJob);
         damageMaps[bullet] = new NativeHashMap<Entity, BulletDamage>(
             groups[(int)bullet].CalculateLength(),
