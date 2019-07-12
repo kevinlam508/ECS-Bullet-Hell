@@ -2,8 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System;
-using Unity.Entities;
-using Unity.Jobs;
+using Unity.Entities;				// Entity
+using Unity.Jobs;					// IcomponentData, IConvertGameObjectToEntity
 
 [Serializable]
 public struct BoundMarkerConvert : IComponentData{

@@ -224,6 +224,9 @@ public class AutoShootSystem : JobComponentSystem{
                     ComponentType.ReadOnly<Translation>()
                 }
             });
+
+        // only update if there's a shooter
+        RequireForUpdate(shooters);
     }
 
     protected override void OnDestroy(){
