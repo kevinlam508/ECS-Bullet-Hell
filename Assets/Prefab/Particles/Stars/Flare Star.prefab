@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 3735038179319520160}
   - component: {fileID: 750008637175078732}
   m_Layer: 9
-  m_Name: Quad
+  m_Name: Flare Star
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -27,7 +27,7 @@ Transform:
   m_GameObject: {fileID: 5177778854136395355}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.4425123, y: 0.4425123, z: 0.4425123}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
@@ -58,7 +58,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: a4ddea0bda2440845a5c84a8cf5cd8a0, type: 2}
+  - {fileID: 2100000, guid: 5ffa2de87b90d3343a62942d957de83c, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
