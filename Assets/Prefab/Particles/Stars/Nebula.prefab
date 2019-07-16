@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 3735038179319520160}
   - component: {fileID: 750008637175078732}
   m_Layer: 9
-  m_Name: Simple Star
+  m_Name: Nebula
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -27,7 +27,7 @@ Transform:
   m_GameObject: {fileID: 5177778854136395355}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.1, y: 0.1, z: 0.1}
+  m_LocalScale: {x: 12, y: 12, z: 12}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
@@ -58,7 +58,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 43f69003b0d8c82418538e5e457ecf9e, type: 2}
+  - {fileID: 2100000, guid: 81a2ebd42366c3248b8eaedabd51c37b, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
