@@ -107,8 +107,7 @@ public class AutoShootSystem : JobComponentSystem{
             }
 		}
 
-        // angleOffset is additional rotation clockwise from facing direction
-        // timeOffset is how much time to simulate the movement
+        // inits the bullet and sets it's components
         private void CreateBullet(int index, Entity bullet, float3 pos,
             quaternion rot, int moveIdx, int damageIdx){
 
