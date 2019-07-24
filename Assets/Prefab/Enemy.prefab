@@ -18,7 +18,7 @@ GameObject:
   - component: {fileID: 6107671488463159953}
   - component: {fileID: 2374736837970163665}
   - component: {fileID: 8868932469836959195}
-  m_Layer: 0
+  m_Layer: 11
   m_Name: Enemy
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -51,22 +51,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 997c49945a5d4094ebf8cbca9644e00a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  startDelay: 0
-  period: 0.1
-  cooldownDuration: 2
-  pattern: 0
-  movementStats: {fileID: 11400000, guid: 84064428b1c4b88448d722ba62dc5f7d, type: 2}
-  damageStats: {fileID: 11400000, guid: 07c23f40c3544be43a97ea011ff6b7d8, type: 2}
-  bullet: {fileID: 316492841909355860, guid: 04139a3bbcc09e0428e8ef555bde8d01, type: 3}
-  count: 2
-  numVolleys: 45
-  angle: 90
-  aimStyle: 1
-  centerAngle: 0
   patterns:
   - startDelay: 0
     period: 0.1
     cooldownDuration: 2
+    sourceOffset: {x: 0, y: 0}
     pattern: 0
     movementStats: {fileID: 11400000, guid: 84064428b1c4b88448d722ba62dc5f7d, type: 2}
     damageStats: {fileID: 11400000, guid: 07c23f40c3544be43a97ea011ff6b7d8, type: 2}
@@ -111,6 +100,7 @@ MeshRenderer:
   m_MotionVectors: 1
   m_LightProbeUsage: 1
   m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:

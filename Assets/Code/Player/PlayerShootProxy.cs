@@ -3,10 +3,18 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 using Unity.Entities;				// IComponentData, Entity, ...
+using Unity.Physics.Authoring;      // PhysicsShape
+using Unity.Mathematics;            // float3
 
 [Serializable]
 public struct PlayerShoot : IComponentData{
+
+    // bullet info
 	public Entity bullet;
+    public float initialScale;
+    public float initialColliderRadius;
+
+    // shooting info
 	public float shotCooldown;
 	public int timeIdx;
 }
@@ -29,8 +37,12 @@ public class PlayerShootProxy : MonoBehaviour, IConvertGameObjectToEntity, IDecl
         // add a TimePassed component
         int timeIdx = TimePassedUtility.AddDefault(entity, dstManager);
 
+        bullet.GetComponent<PhysicsShape>().GetCylinderProperties(out float3 center, 
+            out float height, out float radius, out quaternion orientation);
         dstManager.AddComponentData(entity, new PlayerShoot{
         		bullet = conversionSystem.GetPrimaryEntity(bullet),
+                initialScale = bullet.transform.localScale.x,
+                initialColliderRadius = radius,
         		shotCooldown = shotCooldown,
         		timeIdx = timeIdx
         	});

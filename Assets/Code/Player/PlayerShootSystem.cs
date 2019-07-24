@@ -7,8 +7,11 @@ using Unity.Transforms;            // Translation, Rotation
 using Unity.Burst;                 // BurstCompile
 using Unity.Collections;           // ReadOnly
 using Unity.Mathematics; 		   // math
+using Unity.Physics;               // *Collider
 
 using CustomConstants;			   // Constants
+
+using Random = Unity.Mathematics.Random;
 
 public class PlayerShootSystem : JobComponentSystem
 {
@@ -32,7 +35,9 @@ public class PlayerShootSystem : JobComponentSystem
                 All = new ComponentType[]{
                     typeof(Translation),
                     typeof(Scale),
-                    ComponentType.ReadOnly<WaterShootIndex>()
+                    ComponentType.ReadOnly<WaterShootIndex>(),
+                    typeof(PhysicsCollider),
+                    typeof(BulletDamage)
                 }
             });
     }
@@ -142,6 +147,8 @@ public class PlayerShootSystem : JobComponentSystem
      */
 
     private NativeArray<WaterShootData> bubbleData;
+    private float bubbleBurstTopSpeed = 6f;
+    private float maxChargeTime = 8f;
 
     private JobHandle ScheduleWaterWeapon(PlayerShootJobData jobData, JobHandle deps){    
 
@@ -153,12 +160,17 @@ public class PlayerShootSystem : JobComponentSystem
 
         JobHandle job = new WaterShootJob{
                 data = jobData,
-                bubbleData = bubbleData
+                bubbleData = bubbleData,
+                maxChargeTime = maxChargeTime,
+                bubbleBurstTopSpeed = bubbleBurstTopSpeed
             }.Schedule(players, deps);
 
+        Random rnd = new Random();
+        rnd.InitState((uint)(UnityEngine.Random.value * uint.MaxValue));
         job = new WaterShootUpdateBulletJob{
                 commandBuffer = jobData.commandBuffer,
-                bubbleData = bubbleData
+                bubbleData = bubbleData,
+                rnd = rnd
             }.Schedule(waterBullets, job);
 
         job = new WaterShootPostUpdateJob{
@@ -183,6 +195,14 @@ public class PlayerShootSystem : JobComponentSystem
         public float timeHeld;
         public float3 position;
         public WaterShootState state; 
+
+        // inital sizes for scaling
+        public float initialScale;
+        public float initialColliderRadius;
+
+        // bullet for burst
+        public Entity bullet;
+        public float topSpeed;
     }
 
     private struct WaterShootIndex : IComponentData{
@@ -194,6 +214,8 @@ public class PlayerShootSystem : JobComponentSystem
 
         public PlayerShootJobData data;
         public NativeArray<WaterShootData> bubbleData;
+        public float maxChargeTime;
+        public float bubbleBurstTopSpeed;
 
         public void Execute(Entity ent, int index, [ReadOnly] ref PlayerShoot shoot, 
                 [ReadOnly] ref Translation pos, [ReadOnly] ref Rotation rotation){
@@ -207,8 +229,12 @@ public class PlayerShootSystem : JobComponentSystem
 
                 // get data to update the bubble with
                 WaterShootData shootData = bubbleData[index];
-                shootData.timeHeld = timePassed.time - shoot.shotCooldown;
+                shootData.timeHeld = math.min(timePassed.time - shoot.shotCooldown, maxChargeTime);
                 shootData.position = pos.Value;
+                shootData.initialScale = shoot.initialScale;
+                shootData.initialColliderRadius = shoot.initialColliderRadius;
+                shootData.bullet = shoot.bullet;
+                shootData.topSpeed = bubbleBurstTopSpeed;
 
                 if(data.shooting){
                     // create a new bubble
@@ -245,30 +271,71 @@ public class PlayerShootSystem : JobComponentSystem
     // TODO: make scaleFactor update collider's radius, get a better way of getting bullet radius
 
     // updates the related bullet if it exists
-    private struct WaterShootUpdateBulletJob : IJobForEachWithEntity<Translation, Scale, WaterShootIndex>{
+    private struct WaterShootUpdateBulletJob : IJobForEachWithEntity<Translation, Scale, WaterShootIndex, PhysicsCollider, BulletDamage>{
 
         public EntityCommandBuffer.Concurrent commandBuffer;
         public NativeArray<WaterShootData> bubbleData;
+        public Random rnd;
 
         public void Execute(Entity ent, int index, ref Translation pos, ref Scale scale,
-                    [ReadOnly] ref WaterShootIndex waterIndex){
+                    [ReadOnly] ref WaterShootIndex waterIndex, ref PhysicsCollider collider,
+                    ref BulletDamage damage){
             WaterShootData data = bubbleData[waterIndex.index];
 
             // stick to player
-            pos.Value = new float3(data.position.x, data.position.y,
-                pos.Value.z);
-            float scaleFactor = (1 + (2 * data.timeHeld));
-            scale.Value = .3f * scaleFactor;
+            pos.Value = new float3(data.position.x, data.position.y + scale.Value,
+                Constants.PLAYER_BULLET_HEIGHT);
+
+            // increase damage and size 
+            float progress = math.sqrt(data.timeHeld);
+            float scaleFactor = 1 + progress;
+            scale.Value = data.initialScale * scaleFactor;
+            unsafe{
+                if(collider.ColliderPtr->Type == ColliderType.Cylinder){
+                    CylinderCollider* col = (CylinderCollider*) collider.ColliderPtr;
+                    col->Radius = data.initialColliderRadius * scale.Value;
+                }
+            }
+            damage.damage = (int)(scaleFactor * math.pow(scaleFactor, .25)); // temporary
 
             if(data.state == WaterShootState.Burst){
                 commandBuffer.DestroyEntity(index, ent);
-            }
 
+                for(float angle = 0; angle < 2 * math.PI; angle += rnd.NextFloat(1 / (progress + 1),  1 / progress)){
+                    CreateBurstLine(data.bullet, index, angle, pos.Value,
+                        data.topSpeed, (int)(progress * 2));
+                }
+            }
+            else if(data.state == WaterShootState.NotFired){
+                commandBuffer.DestroyEntity(index, ent);
+            }
 
             // notify shooter that bullet existed and was updated
             ++data.state;
 
             bubbleData[waterIndex.index] = data;
+        }
+
+        public void CreateBurstLine(Entity bullet, int index, float angle, float3 position, float speed,
+                int bulletsInLine){
+            for(int i = 0; i < bulletsInLine; ++i){
+                float speedScale = .5f + (.5f / bulletsInLine * i);
+                Entity entity = commandBuffer.Instantiate(index, bullet);
+                commandBuffer.SetComponent(index, entity, 
+                    new Translation {Value = position});
+                commandBuffer.SetComponent(index, entity, 
+                    new Rotation {Value = 
+                        quaternion.AxisAngle(
+                            new float3(0, 0, 1), 
+                            angle)
+                    });
+                commandBuffer.SetComponent(index, entity, 
+                    new BulletMovement {
+                        moveType = BulletMovementSystem.MoveType.LINEAR,
+                        moveSpeed = speed * speedScale,
+                        rotateSpeed = 0
+                    });
+            }
         }
     }
 
