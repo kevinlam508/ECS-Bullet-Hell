@@ -79,6 +79,7 @@ public class BulletHitSystem : JobComponentSystem
     struct ProcessPlayerToBulletHits : IJobForEachWithEntity<Health, Translation>{
 
         [WriteOnly] public EntityCommandBuffer.Concurrent commandBuffer;
+        public EffectRequestSystem.RequestUtility effectReqUtil;
 
         [ReadOnly] public NativeMultiHashMap<Entity, CollisionInfo> collisions;
         [ReadOnly] public NativeHashMap<Entity, BulletDamage> damageMap;
@@ -94,9 +95,8 @@ public class BulletHitSystem : JobComponentSystem
 
                     BulletDamage damageInfo = damageMap[info.otherEnt];
                     totalDamage += damageInfo.damage;
-                    ParticleRequestSystem.RequestUtility
-                        .CreateRequest(idx, commandBuffer, info.contactPos, 
-                                ParticleRequestSystem.ParticleType.HitSpark);
+                    effectReqUtil.CreateParticleRequest(info.contactPos, 
+                        EffectRequestSystem.ParticleType.HitSpark);
 
                     // handle events to happen when bullet hits
                     if(damageInfo.pierceCount > 0){
@@ -114,9 +114,8 @@ public class BulletHitSystem : JobComponentSystem
                 health.health -= totalDamage;
                 if(health.health <= 0){
                     commandBuffer.DestroyEntity(idx, ent);
-                    ParticleRequestSystem.RequestUtility
-                        .CreateRequest(idx, commandBuffer, pos.Value, 
-                                ParticleRequestSystem.ParticleType.Explosion);
+                    effectReqUtil.CreateParticleRequest(pos.Value, 
+                        EffectRequestSystem.ParticleType.Explosion);
                 }
             }
         }
@@ -126,6 +125,7 @@ public class BulletHitSystem : JobComponentSystem
     struct ProcessEnemyToBulletHits : IJobForEachWithEntity<Health, Translation>{
 
         [WriteOnly] public EntityCommandBuffer.Concurrent commandBuffer;
+        public EffectRequestSystem.RequestUtility effectReqUtil;
 
         [ReadOnly] public NativeMultiHashMap<Entity, CollisionInfo> collisions;
         [ReadOnly] public NativeHashMap<Entity, BulletDamage> damageMap;
@@ -141,9 +141,8 @@ public class BulletHitSystem : JobComponentSystem
 
                     BulletDamage damageInfo = damageMap[info.otherEnt];
                     totalDamage += damageInfo.damage;
-                    ParticleRequestSystem.RequestUtility
-                        .CreateRequest(idx, commandBuffer, info.contactPos, 
-                                ParticleRequestSystem.ParticleType.HitSpark);
+                    effectReqUtil.CreateParticleRequest(info.contactPos, 
+                        EffectRequestSystem.ParticleType.HitSpark);
 
                     // handle events to happen when bullet hits
                     if(damageInfo.pierceCount > 0){
@@ -161,9 +160,8 @@ public class BulletHitSystem : JobComponentSystem
                 health.health -= totalDamage;
                 if(health.health <= 0){
                     commandBuffer.DestroyEntity(idx, ent);
-                    ParticleRequestSystem.RequestUtility
-                        .CreateRequest(idx, commandBuffer, pos.Value, 
-                                ParticleRequestSystem.ParticleType.Explosion);
+                    effectReqUtil.CreateParticleRequest(pos.Value, 
+                        EffectRequestSystem.ParticleType.Explosion);
                 }
             }
         }
@@ -179,6 +177,7 @@ public class BulletHitSystem : JobComponentSystem
 
     // other systems
     BeginInitializationEntityCommandBufferSystem commandBufferSystem;
+    EffectRequestSystem effectSystem;
 
     // phys systems set callbacks up with
     BuildPhysicsWorld buildPhysWorld;
@@ -202,6 +201,7 @@ public class BulletHitSystem : JobComponentSystem
     {
         // get other systems
         commandBufferSystem = World.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
+        effectSystem = World.GetOrCreateSystem<EffectRequestSystem>();
         buildPhysWorld = World.GetOrCreateSystem<BuildPhysicsWorld>();
         stepPhysWorld = World.GetOrCreateSystem<StepPhysicsWorld>();
 
@@ -324,22 +324,23 @@ public class BulletHitSystem : JobComponentSystem
     // need to schedule these in order because of overlapping component types
     private JobHandle InitProcessJobs(JobHandle playerDeps, JobHandle enemyDeps){
 
-        EntityCommandBuffer.Concurrent buffer = commandBufferSystem.CreateCommandBuffer().ToConcurrent();
-
         JobHandle playerProcessJob = new ProcessPlayerToBulletHits{
-            commandBuffer = buffer,
+            commandBuffer = commandBufferSystem.CreateCommandBuffer().ToConcurrent(),
+            effectReqUtil = effectSystem.GetUtility(),
             collisions = collisions[ObjectType.Player],
             damageMap = damageMaps[ObjectType.EnemyBullet]
         }.Schedule(groups[(int)ObjectType.Player], playerDeps);
 
         JobHandle enemyProcessJob = new ProcessEnemyToBulletHits{
             commandBuffer = commandBufferSystem.CreateCommandBuffer().ToConcurrent(),
+            effectReqUtil = effectSystem.GetUtility(),
             collisions = collisions[ObjectType.Enemy],
             damageMap = damageMaps[ObjectType.PlayerBullet]
         }.Schedule(groups[(int)ObjectType.Enemy], 
             JobHandle.CombineDependencies(enemyDeps, playerProcessJob));
 
         commandBufferSystem.AddJobHandleForProducer(enemyProcessJob);
+        effectSystem.AddDependency(enemyProcessJob);
         return enemyProcessJob;
     }
 }
