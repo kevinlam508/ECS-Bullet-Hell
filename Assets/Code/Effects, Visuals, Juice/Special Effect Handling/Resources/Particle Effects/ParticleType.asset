@@ -12,13 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f79d86d263de38d4985bf60837dcfd73, type: 3}
   m_Name: ParticleType
   m_EditorClassIdentifier: 
-  fileName: EffectRequestSystem_Enum
+  fileName: EffectRequestSystem_ParticleEnum
   namespaceName: 
   className: EffectRequestSystem
   isPartial: 1
   classAccessType: 1
   enumeratorName: ParticleType
   enumAccessType: 1
+  AreFlags: 0
   values:
   - {fileID: 4626097120686963377, guid: ec4540c3549441048a92a427545b4152, type: 3}
   - {fileID: 7977905676260428153, guid: bd0a5d9e4be8815448c0b301004b10ef, type: 3}

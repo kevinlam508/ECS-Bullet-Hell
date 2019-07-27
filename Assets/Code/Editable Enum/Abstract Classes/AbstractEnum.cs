@@ -58,6 +58,8 @@ namespace EditableEnum{
         public string enumeratorName;
         [Tooltip("Access modifier of the enumerator if listed. Can only be none, public, or internal if not in a class")]
         public AccessType enumAccessType;
+        [Tooltip("If checked, the enumerator will have the flags attribute. The first value will be None and each value will be assigned a power of 2.")]
+        public bool AreFlags;
         [Tooltip("The values in order.")]
         public List<TValue> values;
 
@@ -121,14 +123,24 @@ namespace EditableEnum{
         	}
 
         	// open enum
+            if(AreFlags){
+                code += tabs + "[System.Flags]\n";
+            }
         	code += tabs + accessStrings[(int)enumAccessType] + "enum " + enumeratorName + "{\n";
         	tabs += "\t";
 
         	// list values
+            if(AreFlags){
+                code += tabs + "None = 0,\n";
+            }
         	for(int i = 0; i < values.Count - 1; ++i){
-        		code += tabs + GetValueName(i) + ",\n";
+        		code += tabs + GetValueName(i) 
+                    + (AreFlags ? (" = " + (1 << (i + 1))): "")
+                    + ",\n";
         	}
-        	code += tabs + GetValueName(values.Count - 1) + "\n";
+        	code += tabs + GetValueName(values.Count - 1) 
+                    + (AreFlags ? (" = " + (1 << values.Count)): "")
+                    + ",\n";
 
         	// close enum
         	tabs = tabs.Remove(tabs.Length - 1);

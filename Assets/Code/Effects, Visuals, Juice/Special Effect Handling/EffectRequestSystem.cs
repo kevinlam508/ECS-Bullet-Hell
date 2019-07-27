@@ -5,7 +5,6 @@ using Unity.Entities;				// ComponentSystem
 using Unity.Collections;            // NativeArray
 using Unity.Transforms;             // Translation
 using Unity.Mathematics;            // float3
-using UnityEditor;					// AssetDatabase
 using Unity.Jobs;
 using System;                       // Enum
 
@@ -75,9 +74,8 @@ public partial class EffectRequestSystem : ComponentSystem
 	}
 
     private void InitParticleSystems(){
-        particleEnum = (EditableEnum.PrefabEnum)AssetDatabase.LoadAssetAtPath(
-        	"Assets/Code/Special Effect Handling/ParticleType.asset", 
-        	typeof(EditableEnum.PrefabEnum));
+        particleEnum = (EditableEnum.PrefabEnum)Resources.Load(
+        	"Particle Effects/ParticleType");
 
         foreach(GameObject go in particleEnum.values){
         	GameObject newGo = GameObject.Instantiate(go);
