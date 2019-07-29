@@ -42,6 +42,10 @@ public partial class EffectRequestSystem : ComponentSystem
         InitParticleSystems();
 	}
 
+    protected override void OnStartRunning(){
+        InitParticleSystems();
+    }
+
     protected override void OnUpdate(){
         deps.Complete();
         deps = new JobHandle();
@@ -75,6 +79,7 @@ public partial class EffectRequestSystem : ComponentSystem
 	}
 
     private void InitParticleSystems(){
+        particleSystems.Clear();
         particleEnum = (EditableEnum.PrefabEnum)Resources.Load(
         	"Particle Effects/ParticleType");
 

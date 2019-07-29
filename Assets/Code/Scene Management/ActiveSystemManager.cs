@@ -58,7 +58,8 @@ public partial class ActiveSystemManager : MonoBehaviour
             if(!instanceCache.ContainsKey(pair.Key)){
                 instanceCache.Add(pair.Key, World.Active.GetOrCreateSystem(pair.Key));
             }
-    		instanceCache[pair.Key].Enabled = activeSystems.HasFlag(pair.Value);
+
+            instanceCache[pair.Key].Enabled = activeSystems.HasFlag(pair.Value);
     	}
     }
 }

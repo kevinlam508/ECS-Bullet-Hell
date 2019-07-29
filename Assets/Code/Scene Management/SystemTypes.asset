@@ -17,7 +17,7 @@ MonoBehaviour:
   className: ActiveSystemManager
   isPartial: 1
   classAccessType: 1
-  enumeratorName: SystemTypeFlags
+  enumeratorName: SystemTypes
   enumAccessType: 1
   AreFlags: 1
   values:

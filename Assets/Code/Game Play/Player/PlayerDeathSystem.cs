@@ -27,8 +27,6 @@ public class PlayerDeathSystem : ComponentSystem
     }
 
     protected override void OnUpdate(){
-
-        // TODO: add conditions to check if in level
     	if(players.CalculateLength() == 0 && SceneSwapper.instance != null){
             SceneSwapper.instance.ExitScene(1);
         }

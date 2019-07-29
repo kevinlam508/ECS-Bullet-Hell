@@ -63,6 +63,6 @@ public class SceneSwapper : MonoBehaviour
         // reset for next scene
         instance = null;
         
-        SceneManager.LoadScene(scenes[0]);
+        SceneManager.LoadScene(scenes[sceneIdx]);
     }
 }
