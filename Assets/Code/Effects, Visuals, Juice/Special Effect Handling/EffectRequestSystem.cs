@@ -10,6 +10,7 @@ using System;                       // Enum
 
  // hacky, meant to put after EndSimulationEntityCommandBufferSystem to minimize sync point, but this is close enough
 [UpdateAfter(typeof(WaveSpawningSystem))]
+[SystemType(ActiveSystemManager.SystemTypes.VisualEffect)]
 public partial class EffectRequestSystem : ComponentSystem
 {
     public struct RequestUtility{

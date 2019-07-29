@@ -11,14 +11,9 @@ using Unity.Mathematics; 		   // math
 using CustomConstants;			   // Constants
 
 [AlwaysUpdateSystem]
+[SystemType(ActiveSystemManager.SystemTypes.Stage)]
 public class PlayerDeathSystem : ComponentSystem
 {
-
-    static PlayerDeathSystem(){
-        ActiveSystemManager.SetSystemType(typeof(PlayerDeathSystem), 
-            ActiveSystemManager.SystemTypeFlags.Stage);
-    }
-
     private EntityQuery players;
 
 	protected override void OnCreateManager(){

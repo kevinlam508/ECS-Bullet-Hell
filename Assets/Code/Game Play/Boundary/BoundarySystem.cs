@@ -13,6 +13,7 @@ using System.Runtime.CompilerServices;  // MethodImpl
 
 [UpdateAfter(typeof(BulletMovementSystem))]
 [UpdateAfter(typeof(PlayerMovementSystem))]
+[SystemType(ActiveSystemManager.SystemTypes.Stage)]
 public class BoundarySystem : JobComponentSystem{
 
 	public enum InteractionType{

@@ -10,6 +10,7 @@ using Unity.Physics;      // physics things
 using CustomConstants;
 
 [UpdateBefore(typeof(TrackerRemovalSystem))]
+[SystemType(ActiveSystemManager.SystemTypes.Stage)]
 public class BulletMovementSystem : JobComponentSystem{
 	public enum MoveType : int { LINEAR, CURVE, HOMING, ENUM_END }
 

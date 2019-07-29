@@ -6,6 +6,7 @@ using Unity.Mathematics;
 using Unity.Burst;
 using Unity.Collections;
 
+[SystemType(ActiveSystemManager.SystemTypes.Stage)]
 public class PlayerMovementSystem : JobComponentSystem{
 	struct PlayerMovementJob : IJobForEach<Translation, Player>{
 

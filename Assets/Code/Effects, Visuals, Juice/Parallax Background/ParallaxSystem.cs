@@ -16,6 +16,7 @@ public struct ParallaxMovement : IComponentData{
 	public float currentVelocity;
 }
 
+[SystemType(ActiveSystemManager.SystemTypes.VisualEffect)]
 public class ParallaxSystem : JobComponentSystem
 {
 

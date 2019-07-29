@@ -8,6 +8,7 @@ using Unity.Mathematics;  // math
 using Unity.Burst;        // BurstCompile
 using Unity.Collections;  // ReadOnly
 
+[SystemType(ActiveSystemManager.SystemTypes.Stage)]
 public class PathMovementSystem : JobComponentSystem{
 
     private EntityQuery pathMovers;

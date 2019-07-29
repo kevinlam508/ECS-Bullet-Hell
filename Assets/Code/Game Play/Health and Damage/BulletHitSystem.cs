@@ -17,6 +17,7 @@ using System;                       // Enum
 [UpdateAfter(typeof(PlayerMovementSystem))]
 [UpdateAfter(typeof(BuildPhysicsWorld))]
 [UpdateBefore(typeof(StepPhysicsWorld))]
+[SystemType(ActiveSystemManager.SystemTypes.Stage)]
 public class BulletHitSystem : JobComponentSystem
 {
     private enum ObjectType { Player, Enemy, PlayerBullet, EnemyBullet }

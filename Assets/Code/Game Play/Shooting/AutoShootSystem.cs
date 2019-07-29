@@ -34,6 +34,7 @@ using CustomConstants;             // Constants
 //    requirements:
 //        multihashmap of entity - autoshoot pairs to run the job on
 //        hashmap of entity - pos/rot to reach from
+[SystemType(ActiveSystemManager.SystemTypes.Stage)]
 public class AutoShootSystem : JobComponentSystem{
 	public enum ShotPattern { FAN, AROUND }
     public enum AimStyle { Forward, Player }

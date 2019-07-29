@@ -13,6 +13,7 @@ using CustomConstants;			   // Constants
 
 using Random = Unity.Mathematics.Random;
 
+[SystemType(ActiveSystemManager.SystemTypes.Stage)]
 public class PlayerShootSystem : JobComponentSystem
 {
 	private BeginInitializationEntityCommandBufferSystem commandBufferSystem;

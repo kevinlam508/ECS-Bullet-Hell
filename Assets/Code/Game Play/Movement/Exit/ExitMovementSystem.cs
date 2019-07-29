@@ -7,6 +7,7 @@ using Unity.Transforms;   // Traslation, Rotation
 using Unity.Burst;        // BurstCompile
 using Unity.Collections;  // ReadOnly
 
+[SystemType(ActiveSystemManager.SystemTypes.Stage)]
 public class ExitMovementSystem : JobComponentSystem{
 
 	public enum MovementComponent{ None, Simple, Path }

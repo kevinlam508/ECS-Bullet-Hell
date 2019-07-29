@@ -10,6 +10,7 @@ using Unity.Burst;                // BurstCompile
 
 // cull bottom of the list as it's spawned if performance is an issue
 [AlwaysUpdateSystem]
+[SystemType(ActiveSystemManager.SystemTypes.Stage)]
 public class WaveSpawningSystem : JobComponentSystem
 {
 
