@@ -28,7 +28,7 @@ public class PlayerDeathSystem : ComponentSystem
 
     protected override void OnUpdate(){
     	if(players.CalculateLength() == 0 && SceneSwapper.instance != null){
-            SceneSwapper.instance.ExitScene(1);
+            SceneSwapper.instance.InitiateExit(1);
         }
     	
     }

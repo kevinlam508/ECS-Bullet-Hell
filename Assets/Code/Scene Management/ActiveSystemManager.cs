@@ -51,6 +51,21 @@ public partial class ActiveSystemManager : MonoBehaviour
     	return numFlags == 0;
     }
 
+    // abstracted just in case
+    private static void ToggleSystem(ComponentSystemBase system, bool enabled){
+        system.Enabled = enabled;
+    }
+
+    public static void DisableAll(){
+        foreach(KeyValuePair<Type, SystemTypes> pair in systemTypes){
+            if(!instanceCache.ContainsKey(pair.Key)){
+                instanceCache.Add(pair.Key, World.Active.GetOrCreateSystem(pair.Key));
+            }
+
+            ToggleSystem(instanceCache[pair.Key], false);
+        }
+    }
+
     [SerializeField] private SystemTypes activeSystems = SystemTypes.None;
 
     void Awake(){
@@ -59,7 +74,7 @@ public partial class ActiveSystemManager : MonoBehaviour
                 instanceCache.Add(pair.Key, World.Active.GetOrCreateSystem(pair.Key));
             }
 
-            instanceCache[pair.Key].Enabled = activeSystems.HasFlag(pair.Value);
+            ToggleSystem(instanceCache[pair.Key], activeSystems.HasFlag(pair.Value));
     	}
     }
 }

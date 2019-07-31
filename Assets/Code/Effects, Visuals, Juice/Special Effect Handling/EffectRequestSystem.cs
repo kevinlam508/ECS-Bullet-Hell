@@ -43,6 +43,7 @@ public partial class EffectRequestSystem : ComponentSystem
 	}
 
     protected override void OnStartRunning(){
+        ClearSceneData();
         InitParticleSystems();
     }
 
@@ -57,11 +58,17 @@ public partial class EffectRequestSystem : ComponentSystem
     }
 
     private void DisposeContainers(){
+        deps.Complete();
         foreach(NativeQueue<ParticleRequest> particleRequestQueue in particleRequestQueues){
             if(particleRequestQueue.IsCreated){
                 particleRequestQueue.Dispose();
             }
         }
+        particleRequestQueues.Clear();
+    }
+
+    private void ClearSceneData(){
+        particleSystems.Clear();
     }
 
 	/*
@@ -79,7 +86,6 @@ public partial class EffectRequestSystem : ComponentSystem
 	}
 
     private void InitParticleSystems(){
-        particleSystems.Clear();
         particleEnum = (EditableEnum.PrefabEnum)Resources.Load(
         	"Particle Effects/ParticleType");
 

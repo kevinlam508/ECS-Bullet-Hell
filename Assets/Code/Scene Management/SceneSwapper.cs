@@ -10,10 +10,13 @@ public class SceneSwapper : MonoBehaviour
 
     public static SceneSwapper instance = null;
 
-	[SerializeField] private string[] scenes = {"Dummy"};
+	[SerializeField] private string[] scenes = {"Level Select"};
     
 	public delegate void SceneExit();
 	public static event SceneExit OnSceneExit;
+
+    private int destinationScene = -1;
+    private int exitCountdown = 1;
 
 	void Awake(){
         if(instance == null){
@@ -32,14 +35,30 @@ public class SceneSwapper : MonoBehaviour
 		}
     }
 
-    public void ExitScene(){
-        ExitScene(0);
+    void LateUpdate(){
+        if(destinationScene >= 0){
+
+            // exit 1 frame after starting exit to ensure there's not lingering issues
+            if(exitCountdown == 0){
+                ExitScene(destinationScene);
+            }
+            exitCountdown--;
+        }
     }
 
-    public void ExitScene(int sceneIdx){
+    // Need to exit later because command buffer systems need to clear out first
+    public void InitiateExit(int sceneIdx = 0){
+        ActiveSystemManager.DisableAll();
         if(sceneIdx > scenes.Length){
-            Debug.LogWarning("Scene index out of bounds: " + sceneIdx);
+            Debug.LogWarning("Scene index out of bounds: " + sceneIdx + ". Returning to Level Select.");
+            destinationScene = 0;
         }
+        else{
+            destinationScene = sceneIdx;
+        }
+    }
+
+    private void ExitScene(int sceneIdx = 0){
 
         EntityManager entManager = World.Active.EntityManager;
 

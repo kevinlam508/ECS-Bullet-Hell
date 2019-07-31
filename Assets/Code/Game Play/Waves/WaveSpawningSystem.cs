@@ -112,7 +112,7 @@ public class WaveSpawningSystem : JobComponentSystem
 		        job = dependencies;
 		    }
 	    	else if(waves[finalWaveIdx].spawned && enemies.CalculateLength() == 0){
-	    		SceneSwapper.instance.ExitScene(0);
+	    		SceneSwapper.instance.InitiateExit(0);
 	    	}
     	}
     	return dependencies;
