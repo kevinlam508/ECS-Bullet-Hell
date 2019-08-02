@@ -55,7 +55,7 @@ public class ParallaxSystem : JobComponentSystem
 		}
 	}
 
-	protected override void OnCreateManager(){
+	protected override void OnCreate(){
 		parallaxParticles = GetEntityQuery(
 			typeof(ParallaxMovement),
 			typeof(Translation));

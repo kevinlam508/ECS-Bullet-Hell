@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;						// Serializable
 
-[CreateAssetMenu(fileName = "New Bullet Damage", menuName = "BulletDamage")]
+[CreateAssetMenu(fileName = "New Bullet Damage", menuName = "Bullets/BulletDamage")]
 [Serializable]
 public class BulletDamageData : ScriptableObject{
 

@@ -21,7 +21,7 @@ public class BulletMovementSystem : JobComponentSystem{
 	// entities to operate on
 	private EntityQuery physBullets;
 
-	protected override void OnCreateManager(){
+	protected override void OnCreate(){
 
 		// get all entities that have Plyaer and Translation
 		playerGroup = GetEntityQuery(
@@ -89,12 +89,26 @@ public class BulletMovementSystem : JobComponentSystem{
 
 			// update position after rotation so that rotation speed that
 			//   relies on position is unaffected
-			Integrator.IntegrateOrientation(ref rot, 
+			IntegrateOrientation(ref rot, 
 				new float3(0, 0, GetRotationSpeed(movementStats.moveType, 
 					movementStats.moveSpeed, forward, math.normalize(playerPos - pos))),
 				dt);
 			pos += linMovement;
 		}
+
+		// both functions below taken from Integrator
+		public static void IntegrateOrientation(ref quaternion orientation, float3 angularVelocity, float timestep)
+        {
+            quaternion dq = IntegrateAngularVelocity(angularVelocity, timestep);
+            quaternion r = math.mul(orientation, dq);
+            orientation = math.normalize(r);
+        }
+        public static quaternion IntegrateAngularVelocity(float3 angularVelocity, float timestep)
+        {
+            float3 halfDeltaTime = new float3(timestep * 0.5f);
+            float3 halfDeltaAngle = angularVelocity * halfDeltaTime;
+            return new quaternion(new float4(halfDeltaAngle, 1.0f));
+        }
 
 		// simulates moving for time amount of time
 		public static void SimulateMovement(ref float3 pos, ref quaternion rot,

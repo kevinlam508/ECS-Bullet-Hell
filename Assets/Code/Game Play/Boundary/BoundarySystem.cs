@@ -194,7 +194,7 @@ public class BoundarySystem : JobComponentSystem{
 
     private BeginInitializationEntityCommandBufferSystem commandBufferSystem;
 
-    protected override void OnCreateManager(){
+    protected override void OnCreate(){
         commandBufferSystem = World.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
 
         // will have all entities with Translation and BoundMarkerIn

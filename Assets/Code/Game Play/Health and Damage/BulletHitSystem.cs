@@ -35,7 +35,7 @@ public class BulletHitSystem : JobComponentSystem
         [ReadOnly] public CollisionWorld world;
 
         // map of entities to hits for process hit job
-        [WriteOnly] public NativeMultiHashMap<Entity, CollisionInfo>.Concurrent collisions;
+        [WriteOnly] public NativeMultiHashMap<Entity, CollisionInfo>.ParallelWriter collisions;
 
         public uint targetMask;
         public uint bulletMask;
@@ -169,7 +169,7 @@ public class BulletHitSystem : JobComponentSystem
     }
 
     struct CopyBulletDamageJob : IJobForEachWithEntity<BulletDamage>{
-        [WriteOnly] public NativeHashMap<Entity, BulletDamage>.Concurrent damageMap;
+        [WriteOnly] public NativeHashMap<Entity, BulletDamage>.ParallelWriter damageMap;
 
         public void Execute(Entity ent, int idx, [ReadOnly] ref BulletDamage damage){
             damageMap.TryAdd(ent, damage);
@@ -198,7 +198,7 @@ public class BulletHitSystem : JobComponentSystem
 
     JobHandle job;
 
-    protected override void OnCreateManager()
+    protected override void OnCreate()
     {
         // get other systems
         commandBufferSystem = World.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
@@ -304,19 +304,19 @@ public class BulletHitSystem : JobComponentSystem
 
         // first arg is max capacity, setting as max possible collision pairs
         collisions.Add(target, new NativeMultiHashMap<Entity, CollisionInfo>(
-            groups[(int)bullet].CalculateLength() * groups[(int)target].CalculateLength(), 
+            groups[(int)bullet].CalculateEntityCount() * groups[(int)target].CalculateEntityCount(), 
             Allocator.TempJob));
         damageMaps.Add(bullet, new NativeHashMap<Entity, BulletDamage>(
-            groups[(int)bullet].CalculateLength(),
+            groups[(int)bullet].CalculateEntityCount(),
             Allocator.TempJob));
 
         JobHandle copyDamageJob = new CopyBulletDamageJob{
-            damageMap = damageMaps[bullet].ToConcurrent()
+            damageMap = damageMaps[bullet].AsParallelWriter()
         }.Schedule(groups[(int)bullet], deps);
 
         JobHandle collectJob = new CollectHitsJob{
             world = buildPhysWorld.PhysicsWorld.CollisionWorld,
-            collisions = collisions[target].ToConcurrent(),
+            collisions = collisions[target].AsParallelWriter(),
             targetMask = masks[(int)target],
             bulletMask = masks[(int)bullet]
         }.Schedule(sim, ref world, deps);

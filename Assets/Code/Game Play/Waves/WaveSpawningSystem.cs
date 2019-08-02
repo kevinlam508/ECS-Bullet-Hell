@@ -54,7 +54,7 @@ public class WaveSpawningSystem : JobComponentSystem
 	private EntityQuery enemies;
 	private JobHandle job;
 
-    protected override void OnCreateManager(){
+    protected override void OnCreate(){
         commandBufferSystem = World.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
 
         enemies = GetEntityQuery(new EntityQueryDesc{
@@ -111,7 +111,7 @@ public class WaveSpawningSystem : JobComponentSystem
 		        commandBufferSystem.AddJobHandleForProducer(dependencies);
 		        job = dependencies;
 		    }
-	    	else if(waves[finalWaveIdx].spawned && enemies.CalculateLength() == 0){
+	    	else if(waves[finalWaveIdx].spawned && enemies.CalculateEntityCount() == 0){
 	    		SceneSwapper.instance.InitiateExit(0);
 	    	}
     	}

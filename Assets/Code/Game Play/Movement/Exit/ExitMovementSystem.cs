@@ -18,7 +18,7 @@ public class ExitMovementSystem : JobComponentSystem{
     // entities to work on
 	EntityQuery movers;
 
-	protected override void OnCreateManager(){
+	protected override void OnCreate(){
         commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
 		movers = GetEntityQuery(
 			ComponentType.ReadOnly<ExitMovement>(),

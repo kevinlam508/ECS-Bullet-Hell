@@ -13,7 +13,7 @@ public class PathMovementSystem : JobComponentSystem{
 
     private EntityQuery pathMovers;
 
-	protected override void OnCreateManager(){
+	protected override void OnCreate(){
 
 		pathMovers = GetEntityQuery(
 			typeof(Translation), 

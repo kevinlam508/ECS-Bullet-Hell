@@ -41,7 +41,7 @@ public class AutoShootSystem : JobComponentSystem{
 
     // still can't be burst compiled since job adds components using
     //   commandbuffer
-    //[BurstCompile]
+    // [BurstCompile]
 	struct AutoShootJob : IJobForEachWithEntity<Translation, Rotation>{
 
         // stores creates to do after job finishes
@@ -204,7 +204,7 @@ public class AutoShootSystem : JobComponentSystem{
     private EntityQuery shooters;
     private EntityQuery players;
 
-    protected override void OnCreateManager(){
+    protected override void OnCreate(){
         commandBufferSystem = World.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
 
         // shooters will have all entities with Timealive, Translation, 

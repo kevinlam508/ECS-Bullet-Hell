@@ -12,7 +12,7 @@ public class TrackerRemovalSystem : JobComponentSystem{
 	// stores commands to process after job runs
 	private EndSimulationEntityCommandBufferSystem commandBufferSystem;
 
-    protected override void OnCreateManager(){
+    protected override void OnCreate(){
         commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
     }
 

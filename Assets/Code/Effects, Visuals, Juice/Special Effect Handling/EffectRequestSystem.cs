@@ -10,12 +10,12 @@ using System;                       // Enum
 
  // hacky, meant to put after EndSimulationEntityCommandBufferSystem to minimize sync point, but this is close enough
 [UpdateAfter(typeof(WaveSpawningSystem))]
-[SystemType(ActiveSystemManager.SystemTypes.VisualEffect)]
+[SystemType(ActiveSystemManager.SystemTypes.Stage)]
 public partial class EffectRequestSystem : ComponentSystem
 {
     public struct RequestUtility{
 
-        public NativeQueue<ParticleRequest>.Concurrent particleQueue;
+        public NativeQueue<ParticleRequest>.ParallelWriter particleQueue;
 
         public void CreateParticleRequest(float3 position, ParticleType type){
             particleQueue.Enqueue(new ParticleRequest{
@@ -28,7 +28,7 @@ public partial class EffectRequestSystem : ComponentSystem
     public RequestUtility GetUtility(){
         particleRequestQueues.Add(new NativeQueue<ParticleRequest>(Allocator.TempJob));
         return new RequestUtility{
-            particleQueue = particleRequestQueues[particleRequestQueues.Count - 1].ToConcurrent()
+            particleQueue = particleRequestQueues[particleRequestQueues.Count - 1].AsParallelWriter()
         };
     }
 
@@ -38,7 +38,7 @@ public partial class EffectRequestSystem : ComponentSystem
         deps = JobHandle.CombineDependencies(deps, dependence);
     }
 
-	protected override void OnCreateManager(){
+	protected override void OnCreate(){
         InitParticleSystems();
 	}
 
@@ -57,6 +57,10 @@ public partial class EffectRequestSystem : ComponentSystem
         DisposeContainers();
     }
 
+    protected override void OnDestroy(){
+        DisposeContainers();
+    }
+
     private void DisposeContainers(){
         deps.Complete();
         foreach(NativeQueue<ParticleRequest> particleRequestQueue in particleRequestQueues){
@@ -72,7 +76,9 @@ public partial class EffectRequestSystem : ComponentSystem
     }
 
 	/*
+     *  ========================================================================
 	 *	Particle Effects
+     *  ========================================================================
 	 */
 
     private EditableEnum.PrefabEnum particleEnum;

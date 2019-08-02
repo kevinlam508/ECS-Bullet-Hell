@@ -50,8 +50,7 @@ public class SceneSwapper : MonoBehaviour
     public void InitiateExit(int sceneIdx = 0){
         ActiveSystemManager.DisableAll();
         if(sceneIdx > scenes.Length){
-            Debug.LogWarning("Scene index out of bounds: " + sceneIdx + ". Returning to Level Select.");
-            destinationScene = 0;
+            Debug.LogWarning("Scene index out of bounds: " + sceneIdx + ". Ignoring.");
         }
         else{
             destinationScene = sceneIdx;

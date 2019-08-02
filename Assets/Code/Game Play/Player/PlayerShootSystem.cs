@@ -13,14 +13,17 @@ using CustomConstants;			   // Constants
 
 using Random = Unity.Mathematics.Random;
 
+
+// not mutliplayer ready
 [SystemType(ActiveSystemManager.SystemTypes.Stage)]
 public class PlayerShootSystem : JobComponentSystem
 {
 	private BeginInitializationEntityCommandBufferSystem commandBufferSystem;
     private EntityQuery players;
     private EntityQuery waterBullets;
+    private bool useFirstWeapon;
 
-	protected override void OnCreateManager(){
+	protected override void OnCreate(){
         commandBufferSystem = World.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
 
         // get entities that define players
@@ -53,9 +56,33 @@ public class PlayerShootSystem : JobComponentSystem
             shooting = (Input.GetAxis("Fire1") > 0)
         };
 
-    	JobHandle shootJob = ScheduleWaterWeapon(data, deps);
 
-    	return shootJob;
+        if(Input.GetKeyDown(KeyCode.E) && !data.shooting){
+            useFirstWeapon = !useFirstWeapon;
+        }
+
+        NativeArray<Entity> player = players.ToEntityArray(Allocator.TempJob);
+        PlayerStats.WeaponTypes weapon = PlayerStats.WeaponTypes.None;
+        if(useFirstWeapon){
+            weapon = PlayerStats.statsMap[player[0]].firstWeapon;
+        }
+        else{
+            weapon = PlayerStats.statsMap[player[0]].secondWeapon;
+        }
+
+        switch(weapon){
+            case PlayerStats.WeaponTypes.Basic:
+                deps = ScheduleBasicWeapon(data, deps);
+                break;
+            case PlayerStats.WeaponTypes.Water:
+                deps = ScheduleWaterWeapon(data, deps);
+                break;
+        }
+        PlayerStats.statsMap[player[0]].activeWeapon = weapon;
+
+        player.Dispose();
+
+    	return deps;
     }
 
     protected override void OnStopRunning(){
@@ -155,7 +182,7 @@ public class PlayerShootSystem : JobComponentSystem
 
         if(!bubbleData.IsCreated){
             bubbleData = new NativeArray<WaterShootData>(
-                players.CalculateLength(),
+                players.CalculateEntityCount(),
                 Allocator.Persistent);
         }
 

@@ -135,11 +135,11 @@ namespace EditableEnum{
             }
         	for(int i = 0; i < values.Count - 1; ++i){
         		code += tabs + GetValueName(i) 
-                    + (AreFlags ? (" = " + (1 << (i + 1))): "")
+                    + (AreFlags ? (" = " + (1 << i)) : "")
                     + ",\n";
         	}
         	code += tabs + GetValueName(values.Count - 1) 
-                    + (AreFlags ? (" = " + (1 << values.Count)): "")
+                    + (AreFlags ? (" = " + (1 << (values.Count - 1))) : "")
                     + ",\n";
 
         	// close enum

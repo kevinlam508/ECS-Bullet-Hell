@@ -5,7 +5,7 @@ using System;
 
 using Unity.Mathematics;
 
-[CreateAssetMenu(fileName = "New Bullet Movement", menuName = "BulletMovement")]
+[CreateAssetMenu(fileName = "New Bullet Movement", menuName = "Bullets/BulletMovement")]
 [Serializable]
 public class BulletMovementData : ScriptableObject{
 	[Tooltip("Should not be ENUM_END, that is for debug purposes")]
