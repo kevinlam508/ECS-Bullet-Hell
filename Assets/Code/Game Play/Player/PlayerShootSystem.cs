@@ -19,12 +19,17 @@ using Random = Unity.Mathematics.Random;
 public class PlayerShootSystem : JobComponentSystem
 {
 	private BeginInitializationEntityCommandBufferSystem commandBufferSystem;
+    private EffectRequestSystem effectSystem;
     private EntityQuery players;
     private EntityQuery waterBullets;
     private bool useFirstWeapon;
 
+    private delegate JobHandle ScheduleWeapon(PlayerShootJobData jobData, JobHandle deps);
+    private ScheduleWeapon[] weaponSchedulers;
+
 	protected override void OnCreate(){
         commandBufferSystem = World.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
+        effectSystem = World.GetOrCreateSystem<EffectRequestSystem>();
 
         // get entities that define players
         players = GetEntityQuery(new EntityQueryDesc{
@@ -44,6 +49,13 @@ public class PlayerShootSystem : JobComponentSystem
                     typeof(BulletDamage)
                 }
             });
+
+        ScheduleWeapon none = (PlayerShootJobData jobData, JobHandle deps) => deps;
+        weaponSchedulers = new ScheduleWeapon[]{
+            none,                                   // None
+            ScheduleBasicWeapon,                    // Basic
+            ScheduleWaterWeapon                     // Water
+        };
     }
 
     protected override JobHandle OnUpdate(JobHandle deps){
@@ -70,14 +82,7 @@ public class PlayerShootSystem : JobComponentSystem
             weapon = PlayerStats.statsMap[player[0]].secondWeapon;
         }
 
-        switch(weapon){
-            case PlayerStats.WeaponTypes.Basic:
-                deps = ScheduleBasicWeapon(data, deps);
-                break;
-            case PlayerStats.WeaponTypes.Water:
-                deps = ScheduleWaterWeapon(data, deps);
-                break;
-        }
+        deps = weaponSchedulers[(int)weapon](data, deps);
         PlayerStats.statsMap[player[0]].activeWeapon = weapon;
 
         player.Dispose();
@@ -198,7 +203,8 @@ public class PlayerShootSystem : JobComponentSystem
         job = new WaterShootUpdateBulletJob{
                 commandBuffer = jobData.commandBuffer,
                 bubbleData = bubbleData,
-                rnd = rnd
+                rnd = rnd,
+                effectReqUtil = effectSystem.GetUtility(),
             }.Schedule(waterBullets, job);
 
         job = new WaterShootPostUpdateJob{
@@ -221,6 +227,7 @@ public class PlayerShootSystem : JobComponentSystem
 
     private struct WaterShootData{
         public float timeHeld;
+        public float maxChargeTime;
         public float3 position;
         public WaterShootState state; 
 
@@ -258,6 +265,7 @@ public class PlayerShootSystem : JobComponentSystem
                 // get data to update the bubble with
                 WaterShootData shootData = bubbleData[index];
                 shootData.timeHeld = math.min(timePassed.time - shoot.shotCooldown, maxChargeTime);
+                shootData.maxChargeTime = maxChargeTime;
                 shootData.position = pos.Value;
                 shootData.initialScale = shoot.initialScale;
                 shootData.initialColliderRadius = shoot.initialColliderRadius;
@@ -304,6 +312,7 @@ public class PlayerShootSystem : JobComponentSystem
         public EntityCommandBuffer.Concurrent commandBuffer;
         public NativeArray<WaterShootData> bubbleData;
         public Random rnd;
+        public EffectRequestSystem.RequestUtility effectReqUtil;
 
         public void Execute(Entity ent, int index, ref Translation pos, ref Scale scale,
                     [ReadOnly] ref WaterShootIndex waterIndex, ref PhysicsCollider collider,
@@ -314,17 +323,25 @@ public class PlayerShootSystem : JobComponentSystem
             pos.Value = new float3(data.position.x, data.position.y + scale.Value,
                 Constants.PLAYER_BULLET_HEIGHT);
 
-            // increase damage and size 
             float progress = math.sqrt(data.timeHeld);
             float scaleFactor = 1 + progress;
-            scale.Value = data.initialScale * scaleFactor;
-            unsafe{
-                if(collider.ColliderPtr->Type == ColliderType.Cylinder){
-                    CylinderCollider* col = (CylinderCollider*) collider.ColliderPtr;
-                    col->Radius = data.initialColliderRadius * scale.Value;
+            
+            // increase damage and size 
+            if(data.timeHeld != data.maxChargeTime){
+                scale.Value = data.initialScale * scaleFactor;
+                unsafe{
+                    if(collider.ColliderPtr->Type == ColliderType.Cylinder){
+                        CylinderCollider* col = (CylinderCollider*) collider.ColliderPtr;
+                        col->Radius = data.initialColliderRadius * scale.Value;
+                    }
+                }
+                damage.damage = (int)(scaleFactor * math.pow(scaleFactor, .25)); // temporary
+
+                if(data.state == WaterShootState.Charging){
+                    effectReqUtil.CreateParticleRequest(pos.Value, 
+                        EffectRequestSystem.ParticleType.WaterCharge);
                 }
             }
-            damage.damage = (int)(scaleFactor * math.pow(scaleFactor, .25)); // temporary
 
             if(data.state == WaterShootState.Burst){
                 commandBuffer.DestroyEntity(index, ent);
