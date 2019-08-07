@@ -131,13 +131,13 @@ public class BulletHitSystem : JobComponentSystem
         [ReadOnly] public NativeMultiHashMap<Entity, CollisionInfo> collisions;
         [ReadOnly] public NativeHashMap<Entity, BulletDamage> damageMap;
 
+        public NativeArray<int> killed;
+
         public void Execute(Entity ent, int idx, ref Health health, [ReadOnly] ref Translation pos){
 
             // run through all the collisions for this entity
             int totalDamage = 0;
-            NativeMultiHashMapIterator<Entity> iter;
-            CollisionInfo info;
-            if(collisions.TryGetFirstValue(ent, out info, out iter)){
+            if(collisions.TryGetFirstValue(ent, out CollisionInfo info, out NativeMultiHashMapIterator<Entity> iter)){
                 do{
 
                     BulletDamage damageInfo = damageMap[info.otherEnt];
@@ -163,6 +163,7 @@ public class BulletHitSystem : JobComponentSystem
                     commandBuffer.DestroyEntity(idx, ent);
                     effectReqUtil.CreateParticleRequest(pos.Value, 
                         EffectRequestSystem.ParticleType.Explosion);
+                    killed[idx] = 1;
                 }
             }
         }
@@ -192,6 +193,7 @@ public class BulletHitSystem : JobComponentSystem
         = new Dictionary<ObjectType, NativeMultiHashMap<Entity, CollisionInfo>>();
     Dictionary<ObjectType, NativeHashMap<Entity, BulletDamage>> damageMaps
         = new Dictionary<ObjectType, NativeHashMap<Entity, BulletDamage>>();
+    NativeArray<int> numKills; 
 
     // physics layer masks
     uint[] masks;
@@ -334,11 +336,26 @@ public class BulletHitSystem : JobComponentSystem
             damageMap = damageMaps[ObjectType.EnemyBullet]
         }.Schedule(groups[(int)ObjectType.Player], playerDeps);
 
+
+        if(numKills.IsCreated){        
+            int count = 0;
+            for(int i = 0; i < numKills.Length; ++i){
+                count += numKills[i];
+            }
+            foreach(KeyValuePair<Entity, PlayerStats> pair in PlayerStats.statsMap){
+                pair.Value.boostCharges = Mathf.Min(pair.Value.maxCharges,
+                    pair.Value.boostCharges + count);
+            }
+
+            numKills.Dispose();
+        }
+        numKills = new NativeArray<int>(groups[(int)ObjectType.Enemy].CalculateEntityCount(), Allocator.TempJob);
         JobHandle enemyProcessJob = new ProcessEnemyToBulletHits{
             commandBuffer = commandBufferSystem.CreateCommandBuffer().ToConcurrent(),
             effectReqUtil = effectSystem.GetUtility(),
             collisions = collisions[ObjectType.Enemy],
-            damageMap = damageMaps[ObjectType.PlayerBullet]
+            damageMap = damageMaps[ObjectType.PlayerBullet],
+            killed = numKills
         }.Schedule(groups[(int)ObjectType.Enemy], 
             JobHandle.CombineDependencies(enemyDeps, playerProcessJob));
 

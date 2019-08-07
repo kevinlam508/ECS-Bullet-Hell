@@ -25,7 +25,8 @@ public class PlayerShootSystem : JobComponentSystem
     private bool useFirstWeapon;
 
     private delegate JobHandle ScheduleWeapon(PlayerShootJobData jobData, JobHandle deps);
-    private ScheduleWeapon[] weaponSchedulers;
+    private Dictionary<PlayerStats.WeaponTypes, ScheduleWeapon> weaponSchedulers 
+        = new Dictionary<PlayerStats.WeaponTypes, ScheduleWeapon>();
 
 	protected override void OnCreate(){
         commandBufferSystem = World.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
@@ -51,11 +52,10 @@ public class PlayerShootSystem : JobComponentSystem
             });
 
         ScheduleWeapon none = (PlayerShootJobData jobData, JobHandle deps) => deps;
-        weaponSchedulers = new ScheduleWeapon[]{
-            none,                                   // None
-            ScheduleBasicWeapon,                    // Basic
-            ScheduleWaterWeapon                     // Water
-        };
+        weaponSchedulers.Add(PlayerStats.WeaponTypes.Basic, ScheduleBasicWeapon);
+        weaponSchedulers.Add(PlayerStats.WeaponTypes.Water, ScheduleWaterWeapon);
+        weaponSchedulers.Add(PlayerStats.WeaponTypes.Basic | PlayerStats.WeaponTypes.Water, 
+            ScheduleBoostBasicWaterWeapon);
     }
 
     protected override JobHandle OnUpdate(JobHandle deps){
@@ -68,22 +68,47 @@ public class PlayerShootSystem : JobComponentSystem
             shooting = (Input.GetAxis("Fire1") > 0)
         };
 
-
         if(Input.GetKeyDown(KeyCode.E) && !data.shooting){
             useFirstWeapon = !useFirstWeapon;
         }
-
         NativeArray<Entity> player = players.ToEntityArray(Allocator.TempJob);
         PlayerStats.WeaponTypes weapon = PlayerStats.WeaponTypes.None;
-        if(useFirstWeapon){
-            weapon = PlayerStats.statsMap[player[0]].firstWeapon;
-        }
-        else{
-            weapon = PlayerStats.statsMap[player[0]].secondWeapon;
+        PlayerStats currStats = PlayerStats.statsMap[player[0]];
+        
+        // start boost mode
+        if(currStats.boostCharges == currStats.maxCharges && currStats.remainingBoostDuration == 0){
+            if(Input.GetKeyDown(KeyCode.Q)){
+                currStats.remainingBoostDuration = currStats.boostDuration;
+            }
         }
 
-        deps = weaponSchedulers[(int)weapon](data, deps);
-        PlayerStats.statsMap[player[0]].activeWeapon = weapon;
+        // pick the relavent weapon
+        // in boost mode
+        if(currStats.remainingBoostDuration > 0){
+            currStats.remainingBoostDuration -= data.dt;
+            weapon = currStats.firstWeapon | currStats.secondWeapon;
+
+            // end boost mode
+            if(currStats.remainingBoostDuration <= 0){
+                currStats.boostCharges = 0;
+                currStats.remainingBoostDuration = 0;
+            }
+        }
+        // out of boost mode
+        else if(useFirstWeapon){
+            weapon = currStats.firstWeapon;
+        }
+        else{
+            weapon = currStats.secondWeapon;
+        }
+
+        if(weaponSchedulers.ContainsKey(weapon)){
+            deps = weaponSchedulers[weapon](data, deps);
+        }
+        else{
+            Debug.LogWarning("No job set for " + weapon);
+        }
+        currStats.activeWeapon = weapon;
 
         player.Dispose();
 
@@ -405,6 +430,53 @@ public class PlayerShootSystem : JobComponentSystem
                 bubbleData[index] = waterData;
             }
 
+        }
+    }
+
+    /*
+     *  Boost Weapon: Basic + Water
+     *
+     *  Consistently shoots in the same pattern as water's burst
+     */
+
+    private JobHandle ScheduleBoostBasicWaterWeapon(PlayerShootJobData jobData, JobHandle deps){
+        Random rnd = new Random();
+        rnd.InitState((uint)(UnityEngine.Random.value * uint.MaxValue));
+        JobHandle shootJob = new BoostBasicWaterJob{
+            data = jobData,
+            rnd = rnd
+        }.Schedule(players, deps);
+
+        // tells buffer systems to wait for the job to finish, then
+        //   it will perform the commands buffered
+        commandBufferSystem.AddJobHandleForProducer(shootJob);
+
+        return shootJob;
+    }
+
+    private struct BoostBasicWaterJob : IJobForEachWithEntity<PlayerShoot, Translation, Rotation>{
+
+        public PlayerShootJobData data;
+        public Random rnd;
+
+        public void Execute(Entity ent, int index, [ReadOnly] ref PlayerShoot shoot, 
+                [ReadOnly] ref Translation pos, [ReadOnly] ref Rotation rotation){
+
+            // getting the right TimePassed
+            DynamicBuffer<TimePassed> buffer = data.timePassedBuffers[ent];
+            TimePassed timePassed = buffer[shoot.timeIdx];
+            timePassed.time += data.dt;
+
+            // fire until below period
+            if(data.shooting && timePassed.time > shoot.shotCooldown){
+                
+                for(float angle = 0; angle < 2 * math.PI; angle += rnd.NextFloat(.3f,  .5f)){
+                    data.CreateBullet(index, ref pos, ref rotation, shoot.bullet, angle);
+                }
+                timePassed.time = 0;
+            }
+
+            buffer[shoot.timeIdx] = timePassed;
         }
     }
 }

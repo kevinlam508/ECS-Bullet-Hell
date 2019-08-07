@@ -25,9 +25,9 @@ public class UIShowWeapon : MonoBehaviour
     {
     	if(stats != null){
 	        foreach(PlayerStats.WeaponTypes weapon in System.Enum.GetValues(typeof(PlayerStats.WeaponTypes))){
-	        	int idx = (int)weapon - 1; // -1 since flags start at 1
+	        	int idx = (int)Mathf.Log((int)weapon, 2);
 	        	if(0 <= idx && idx < weaponVisuals.Count){
-	        		weaponVisuals[idx].SetActive(stats.activeWeapon == weapon);
+	        		weaponVisuals[idx].SetActive(stats.activeWeapon.HasFlag(weapon));
 	        	}
 	        }
 	    }

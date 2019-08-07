@@ -13,7 +13,11 @@ MonoBehaviour:
   m_Name: Player 1
   m_EditorClassIdentifier: 
   maxHealth: 20
-  currentHealth: 10
+  currentHealth: 2
   firstWeapon: 1
   secondWeapon: 2
-  activeWeapon: 1
+  activeWeapon: 2
+  maxCharges: 5
+  boostCharges: 5
+  boostDuration: 20
+  remainingBoostDuration: 0
